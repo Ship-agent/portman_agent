@@ -32,43 +32,50 @@ const Navigation: React.FC = () => {
       title: 'Dashboard',
       path: '/dashboard',
       icon: <DashboardIcon />,
-      requires: 'user'
+      requires: 'user',
+      dataCy: 'nav-item-dashboard'
     },
     {
       title: 'Port Calls',
       path: '/port-calls',
       icon: <DirectionsBoatIcon />,
-      requires: 'none'
+      requires: 'none',
+      dataCy: 'nav-item-port-calls'
     },
     {
       title: 'Vessel Tracking',
       path: '/vessel-tracking',
       icon: <TrackingIcon />,
-      requires: 'none'
+      requires: 'none',
+      dataCy: 'nav-item-vessel-tracking'
     },
     {
       title: 'Arrivals',
       path: '/arrivals',
       icon: <ArrivalsIcon />,
-      requires: 'none'
+      requires: 'none',
+      dataCy: 'nav-item-arrivals'
     },
     {
       title: 'Port Call Management',
       path: '/port-call-management',
       icon: <AnchorIcon />,
-      requires: 'admin'
+      requires: 'admin',
+      dataCy: 'nav-item-port-call-management'
     },
     {
       title: 'Reports',
       path: '/reports',
       icon: <ReportIcon />,
-      requires: 'user'
+      requires: 'user',
+      dataCy: 'nav-item-reports'
     },
     {
       title: 'Settings',
       path: '/settings',
       icon: <SettingsIcon />,
-      requires: 'admin'
+      requires: 'admin',
+      dataCy: 'nav-item-settings'
     }
   ];
 
@@ -88,7 +95,7 @@ const Navigation: React.FC = () => {
         const isActive = location.pathname === item.path;
         
         return (
-          <ListItem key={item.path} disablePadding data-cy={`nav-item-${item.title.toLowerCase().replace(' ', '-')}`}>
+          <ListItem key={item.path} disablePadding data-cy={`${item.dataCy}`}>
             <Tooltip title={item.title} placement="right">
               <ListItemButton
                 selected={isActive}

@@ -79,11 +79,11 @@ const PortCallManagement: React.FC = () => {
   }, []);
 
   // Filter port calls based on search term
-  const filteredPortCalls = portCalls.filter(call =>
+  const filteredPortCalls = portCalls?.filter(call =>
     call.vesselname.toLowerCase().includes(searchTerm.toLowerCase()) ||
     call.imolloyds.toString().includes(searchTerm) ||
     call.portareaname.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) || [];
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);

@@ -7,7 +7,7 @@ describe('Port Call Management', () => {
         cy.dataCy('auth-submit').click()
 
         // Navigate to port call management
-        cy.visit('/port-call-management')
+        cy.dataCy('nav-item-port-call-management').first().click()
     })
 
     it('should show page title and add button', () => {
