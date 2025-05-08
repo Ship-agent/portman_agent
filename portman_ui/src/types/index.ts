@@ -50,6 +50,10 @@ export interface PortCall {
   agentname?: string;
   shippingcompany?: string;
   
+  // XML data
+  noa_xml_url?: string;
+  ata_xml_url?: string;
+  
   // Metadata
   created: string;
   modified: string;

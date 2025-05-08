@@ -17,7 +17,11 @@ import {
   Typography,
   Tooltip, Collapse, Grid2, Button
 } from '@mui/material';
-import { Search as SearchIcon, Info as InfoIcon } from '@mui/icons-material';
+import {
+  Search as SearchIcon,
+  Info as InfoIcon,
+  Visibility as VisibilityIcon
+} from '@mui/icons-material';
 import { PortCall } from '../types';
 import api from "../services/api";
 
@@ -125,6 +129,23 @@ const PortCalls: React.FC = () => {
   const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleViewXML = (url: string) => {
+    window.open(url, '_blank');
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'success';
+      case 'SCHEDULED':
+        return 'primary';
+      case 'COMPLETED':
+        return 'default';
+      default:
+        return 'default';
+    }
   };
 
   // Helper function to determine the status label and color
@@ -389,6 +410,104 @@ const PortCalls: React.FC = () => {
                 <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', textAlign: 'center' }} data-cy="table-header-actions">Actions</TableCell>
               </TableRow>
             </TableHead>
+
+              {/*<TableBody data-cy="portcalls-table-body">*/}
+              {/*    {filteredPortCalls*/}
+              {/*        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)*/}
+              {/*        .map((call: PortCall) => (*/}
+              {/*            <TableRow*/}
+              {/*                hover*/}
+              {/*                key={call?.portcallid}*/}
+              {/*                sx={{*/}
+              {/*                    '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.03)' },*/}
+              {/*                    transition: 'all 0.2s ease-in-out',*/}
+              {/*                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.06)' }*/}
+              {/*                }}*/}
+              {/*                data-cy={`portcall-row-${call?.portcallid}`}*/}
+              {/*            >*/}
+              {/*                <TableCell>*/}
+              {/*                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>*/}
+              {/*                        <Typography variant="body1" sx={{ fontWeight: 500 }} data-cy="vessel-name">*/}
+              {/*                            {call?.vesselname || 'N/A'}*/}
+              {/*                        </Typography>*/}
+              {/*                        <Typography variant="body2" color="text.secondary" data-cy="vessel-imo">*/}
+              {/*                            IMO: {call?.imolloyds || 'N/A'}*/}
+              {/*                        </Typography>*/}
+              {/*                    </Box>*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell>*/}
+              {/*                    <Chip*/}
+              {/*                        label={call?.ata ? 'Arrived' : 'Expected'}*/}
+              {/*                        color={call?.ata ? 'success' : 'primary'}*/}
+              {/*                        size="small"*/}
+              {/*                        data-cy="status-chip"*/}
+              {/*                    />*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell>*/}
+              {/*                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>*/}
+              {/*                        <Typography variant="body1" data-cy="port-area">*/}
+              {/*                            {call?.portareaname || 'N/A'}*/}
+              {/*                        </Typography>*/}
+              {/*                        <Typography variant="body2" color="text.secondary" data-cy="berth-name">*/}
+              {/*                            {call?.berthname || 'N/A'}*/}
+              {/*                        </Typography>*/}
+              {/*                    </Box>*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="eta-value">*/}
+              {/*                    {formatDateTime(call?.eta)}*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="ata-value">*/}
+              {/*                    {call?.ata ? formatDateTime(call.ata) : '-'}*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="etd-value">*/}
+              {/*                    {formatDateTime(call?.etd)}*/}
+              {/*                </TableCell>*/}
+              {/*                <TableCell sx={{ textAlign: 'center' }}>*/}
+              {/*                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>*/}
+              {/*                        {call?.noa_xml_url && (*/}
+              {/*                            <Tooltip title="View NOA XML">*/}
+              {/*                                <IconButton*/}
+              {/*                                    color="primary"*/}
+              {/*                                    size="small"*/}
+              {/*                                    onClick={() => handleViewXML(call.noa_xml_url!)}*/}
+              {/*                                >*/}
+              {/*                                    <VisibilityIcon fontSize="small" />*/}
+              {/*                                </IconButton>*/}
+              {/*                            </Tooltip>*/}
+              {/*                        )}*/}
+              {/*                        {call?.ata_xml_url && (*/}
+              {/*                            <Tooltip title="View ATA XML">*/}
+              {/*                                <IconButton*/}
+              {/*                                    color="success"*/}
+              {/*                                    size="small"*/}
+              {/*                                    onClick={() => handleViewXML(call.ata_xml_url!)}*/}
+              {/*                                >*/}
+              {/*                                    <VisibilityIcon fontSize="small" />*/}
+              {/*                                </IconButton>*/}
+              {/*                            </Tooltip>*/}
+              {/*                        )}*/}
+              {/*                        <Tooltip title="View Details">*/}
+              {/*                            <IconButton*/}
+              {/*                                color="info"*/}
+              {/*                                size="small"*/}
+              {/*                                onClick={() => window.location.href = `/port-call/${call?.portcallid}`}*/}
+              {/*                            >*/}
+              {/*                                <InfoIcon fontSize="small" />*/}
+              {/*                            </IconButton>*/}
+              {/*                        </Tooltip>*/}
+              {/*                    </Box>*/}
+              {/*                </TableCell>*/}
+              {/*            </TableRow>*/}
+              {/*        ))}*/}
+              {/*    {filteredPortCalls.length === 0 && (*/}
+              {/*        <TableRow>*/}
+              {/*            <TableCell colSpan={7} align="center">*/}
+              {/*                No port calls found*/}
+              {/*            </TableCell>*/}
+              {/*        </TableRow>*/}
+              {/*    )}*/}
+              {/*</TableBody>*/}
+
             <TableBody data-cy="portcalls-table-body">
               {filteredPortCalls
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
