@@ -67,11 +67,18 @@ export const api = {
   // Port calls with pagination support
   getPortCallsPaginated: async (afterParam?: string) => {
     if (USE_MOCK_DATA) {
-      return { data: { value: mockPortCalls, nextLink: null } };
+      // Sort mock data from newest to oldest
+      const sortedCalls = [...mockPortCalls].sort((a, b) => 
+        new Date(b.created).getTime() - new Date(a.created).getTime()
+      );
+      return { data: { value: sortedCalls, nextLink: null } };
     }
 
     try {
-      const params: any = {};
+      const params: any = {
+        // Add orderby parameter to sort by created date in descending order
+        '$orderby': 'created desc'
+      };
       if (afterParam) {
         params['$after'] = afterParam;
       }
