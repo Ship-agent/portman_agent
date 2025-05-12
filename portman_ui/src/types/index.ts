@@ -53,6 +53,7 @@ export interface PortCall {
   // XML data
   noa_xml_url?: string;
   ata_xml_url?: string;
+  vid_xml_url?: string;
   
   // Metadata
   created: string;

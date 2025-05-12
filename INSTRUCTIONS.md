@@ -100,6 +100,16 @@ Portman Agent is an Azure-based application that tracks vessel port calls, integ
 - All comments in the code should be in English.
 - Keep this `INSTRUCTIONS.md` file updated for reference and context.
 
+## XML Downloads
+
+The application provides functionality to download XML documents in different formats:
+
+- **ATA XML**: Actual Time of Arrival XML documents
+- **NOA XML**: Notification of Arrival XML documents
+- **VID XML**: Vessel Information Data XML documents
+
+These XML buttons are available in the Port Calls view and appear when the respective XML URL is available for a port call.
+
 ## Routing Configuration
 
 ### Protected Routes

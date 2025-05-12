@@ -486,6 +486,17 @@ const PortCalls: React.FC = () => {
               {/*                                </IconButton>*/}
               {/*                            </Tooltip>*/}
               {/*                        )}*/}
+              {/*                        {call?.vid_xml_url && (*/}
+              {/*                            <Tooltip title="View VID XML">*/}
+              {/*                                <IconButton*/}
+              {/*                                    color="warning"*/}
+              {/*                                    size="small"*/}
+              {/*                                    onClick={() => handleViewXML(call.vid_xml_url!)}*/}
+              {/*                                >*/}
+              {/*                                    <VisibilityIcon fontSize="small" />*/}
+              {/*                                </IconButton>*/}
+              {/*                            </Tooltip>*/}
+              {/*                        )}*/}
               {/*                        <Tooltip title="View Details">*/}
               {/*                            <IconButton*/}
               {/*                                color="info"*/}
