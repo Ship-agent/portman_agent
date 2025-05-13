@@ -65,6 +65,7 @@ Before deploying **locally**, ensure you have:
 ```bash
 az login
 ```
+
 ✅ **Backend Storage for Terraform State** (Azure Storage Account with blob container)
 
 ### **1️⃣ Set Up Terraform and define Azure storage for storing Terraform state**  
@@ -452,6 +453,13 @@ Finally start Azure functions locally:
 ```
 func start
 ```
+
+### **Steps for running local development environment, in short**  
+| Service | Command |
+|-|-|
+| **PostgreSQL & DAB** | `docker compose up -d` |
+| **Azure functions** | `func start` |
+| **Portman-UI** | `cd portman_ui && npm run dev` |
 
 ---
 
