@@ -24,7 +24,7 @@ const Authentication: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register, isAuthenticated } = useAuth();
-  
+
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +38,7 @@ const Authentication: React.FC = () => {
   // Check if user is logged in
   useEffect(() => {
     if (isAuthenticated) {
-      // Redirect user back to the page he came from or the dashboard -page
+      // Get the original destination from location state or default to dashboard
       const from = (location.state as any)?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     }
@@ -71,12 +71,13 @@ const Authentication: React.FC = () => {
         const success = await login(email, password);
         if (success) {
           setSuccess('Login successful! Redirecting...');
+          // Get the original destination from location state or default to dashboard
           const from = (location.state as any)?.from?.pathname || '/dashboard';
-          
+
           // Navigate after showing success message
           setTimeout(() => {
             navigate(from, { replace: true });
-          }, 3000);
+          }, 1000);
         } else {
           setError('Invalid email or password');
         }
@@ -92,7 +93,7 @@ const Authentication: React.FC = () => {
           setName('');
           setRole('user');
           // Switch to login view
-          setTimeout(() => setIsLogin(true), 3000);
+          setTimeout(() => setIsLogin(true), 1000);
         } else {
           setError('Registration failed. Please try again.');
         }
@@ -106,140 +107,140 @@ const Authentication: React.FC = () => {
   };
 
   return (
-      <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <Card sx={{ maxWidth: 500, width: '100%', p: 3 }} data-cy="login-card">
-          <CardContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-              <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
-                <LockOutlinedIcon />
-              </Avatar>
-              <Typography component="h1" variant="h5" data-cy="auth-title">
-                {isLogin ? 'Sign In' : 'Create Account'}
-              </Typography>
-            </Box>
+    <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+      <Card sx={{ maxWidth: 500, width: '100%', p: 3 }} data-cy="login-card">
+        <CardContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+            <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+              <LockOutlinedIcon />
+            </Avatar>
+            <Typography component="h1" variant="h5" data-cy="auth-title">
+              {isLogin ? 'Sign In' : 'Create Account'}
+            </Typography>
+          </Box>
 
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }} data-cy="auth-error">
-                  {error}
-                </Alert>
-            )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} data-cy="auth-error">
+              {error}
+            </Alert>
+          )}
 
-            {success && (
-                <Alert severity="success" sx={{ mb: 2 }} data-cy="auth-success">
-                  {success}
-                </Alert>
-            )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }} data-cy="auth-success">
+              {success}
+            </Alert>
+          )}
 
-            <Box component="form" onSubmit={handleSubmit} noValidate data-cy="auth-form">
-              {!isLogin && (
-                  <TextField
-                      margin="normal"
-                      required
-                      fullWidth
-                      id="name"
-                      label="Full Name"
-                      name="name"
-                      autoComplete="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      autoFocus={!isLogin}
-                      disabled={isLoading}
-                      data-cy="input-name"
-                  />
-              )}
-
+          <Box component="form" onSubmit={handleSubmit} noValidate data-cy="auth-form">
+            {!isLogin && (
               <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoFocus={isLogin}
-                  disabled={isLoading}
-                  data-cy="input-email"
+                margin="normal"
+                required
+                fullWidth
+                id="name"
+                label="Full Name"
+                name="name"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus={!isLogin}
+                disabled={isLoading}
+                data-cy="input-name"
               />
+            )}
 
-              <TextField
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoFocus={isLogin}
+              disabled={isLoading}
+              data-cy="input-email"
+            />
+
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              data-cy="input-password"
+            />
+
+            {!isLogin && (
+              <>
+                <TextField
                   margin="normal"
                   required
                   fullWidth
-                  name="password"
-                  label="Password"
+                  name="confirmPassword"
+                  label="Confirm Password"
                   type="password"
-                  id="password"
-                  autoComplete={isLogin ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
-                  data-cy="input-password"
-              />
+                  data-cy="input-confirm-password"
+                />
 
-              {!isLogin && (
-                  <>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        name="confirmPassword"
-                        label="Confirm Password"
-                        type="password"
-                        id="confirmPassword"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        disabled={isLoading}
-                        data-cy="input-confirm-password"
-                    />
-
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel id="role-label">Role</InputLabel>
-                      <Select
-                          labelId="role-label"
-                          id="role"
-                          value={role}
-                          label="Role"
-                          onChange={(e) => setRole(e.target.value)}
-                          disabled={isLoading}
-                          data-cy="select-role"
-                      >
-                        <MenuItem value="admin" data-cy="role-admin">Administrator</MenuItem>
-                        <MenuItem value="user" data-cy="role-user">Standard User</MenuItem>
-                        <MenuItem value="viewer" data-cy="role-viewer">Viewer (Read-only)</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </>
-              )}
-
-              <Button
-                  type="submit"
-                  fullWidth
-                  variant="contained"
-                  sx={{ mt: 3, mb: 2 }}
-                  disabled={isLoading}
-                  data-cy="auth-submit"
-              >
-                {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
-              </Button>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Box sx={{ textAlign: 'center' }}>
-                <Button
-                    onClick={() => setIsLogin(!isLogin)}
-                    variant="text"
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="role-label">Role</InputLabel>
+                  <Select
+                    labelId="role-label"
+                    id="role"
+                    value={role}
+                    label="Role"
+                    onChange={(e) => setRole(e.target.value)}
                     disabled={isLoading}
-                    data-cy="auth-toggle-mode"
-                >
-                  {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
-                </Button>
-              </Box>
+                    data-cy="select-role"
+                  >
+                    <MenuItem value="admin" data-cy="role-admin">Administrator</MenuItem>
+                    <MenuItem value="user" data-cy="role-user">Standard User</MenuItem>
+                    <MenuItem value="viewer" data-cy="role-viewer">Viewer (Read-only)</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            )}
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+              disabled={isLoading}
+              data-cy="auth-submit"
+            >
+              {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+            </Button>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Button
+                onClick={() => setIsLogin(!isLogin)}
+                variant="text"
+                disabled={isLoading}
+                data-cy="auth-toggle-mode"
+              >
+                {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+              </Button>
             </Box>
-          </CardContent>
-        </Card>
-      </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 
