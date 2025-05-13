@@ -6,6 +6,60 @@ import azure.functions as func
 from azure.storage.blob import BlobServiceClient, BlobSasPermissions, generate_blob_sas
 from datetime import datetime, timedelta, UTC
 import xml.etree.ElementTree as ET
+import time
+import random
+import threading
+from collections import deque
+
+# Global rate limiting mechanism
+class SlackRateLimiter:
+    def __init__(self, max_calls_per_minute=50):
+        self.max_calls_per_minute = max_calls_per_minute
+        self.lock = threading.Lock()
+        self.call_timestamps = deque()
+        self.retry_after = 0
+        self.last_rate_limit_time = 0
+
+    def wait_if_needed(self):
+        """Wait if we've hit our rate limit or if Slack told us to wait"""
+        current_time = time.time()
+        
+        # First check if Slack told us to wait
+        if current_time < self.last_rate_limit_time + self.retry_after:
+            wait_time = (self.last_rate_limit_time + self.retry_after) - current_time
+            logging.info(f"Waiting {wait_time:.2f}s due to previous rate limit from Slack")
+            time.sleep(wait_time)
+        
+        with self.lock:
+            # Remove timestamps older than 1 minute
+            current_time = time.time()
+            while self.call_timestamps and self.call_timestamps[0] < current_time - 60:
+                self.call_timestamps.popleft()
+            
+            # If we've reached our limit, wait until we can make another call
+            if len(self.call_timestamps) >= self.max_calls_per_minute:
+                # Calculate how long to wait
+                oldest_timestamp = self.call_timestamps[0]
+                wait_time = oldest_timestamp + 60 - current_time
+                if wait_time > 0:
+                    logging.info(f"Rate limiting ourselves: waiting {wait_time:.2f}s before sending to Slack")
+                    time.sleep(wait_time)
+                    # Recalculate current time after waiting
+                    current_time = time.time()
+            
+            # Record this call
+            self.call_timestamps.append(current_time)
+    
+    def update_retry_after(self, retry_seconds):
+        """Update the retry_after value based on Slack's response"""
+        with self.lock:
+            self.retry_after = max(self.retry_after, retry_seconds)
+            self.last_rate_limit_time = time.time()
+
+# Create the rate limiter instance (one per function app instance)
+# Slack's rate limit is typically around 1 message per second,
+# so setting our limit to a bit below that to be safe
+slack_rate_limiter = SlackRateLimiter(max_calls_per_minute=60)
 
 # Import the shared blob utility function
 try:
@@ -72,7 +126,7 @@ def blob_trigger(blob: func.InputStream):
     if os.environ.get("SLACK_WEBHOOK_ENABLED", "false").lower() == "false":
         logging.info("Slack webhook is disabled, skipping notification")
         return
-
+    
     webhook_url = os.environ["SLACK_WEBHOOK_URL"]
     channel = os.environ.get("SLACK_CHANNEL")
     username = "Portman Bot"
@@ -229,7 +283,7 @@ def send_slack_notification(webhook_url, blob_name, port_call_id, time_value, re
         title = "New port arrival detected"
         time_label = "ATA"
     
-    logging.info(f"Sending Slack notification with webhook url {webhook_url} for {blob_name} with port_call_id {port_call_id} and {time_label} {time_value}")
+    logging.info(f"Preparing Slack notification for {blob_name} with port_call_id {port_call_id} and {time_label} {time_value}")
 
     # Create the message text based on XML type
     if xml_type == "VID":
@@ -292,6 +346,9 @@ def send_slack_notification(webhook_url, blob_name, port_call_id, time_value, re
     if channel:
         message["channel"] = channel
     
+    # Use the rate limiter to control our sending rate
+    slack_rate_limiter.wait_if_needed()
+    
     # Send the message to Slack
     response = requests.post(
         webhook_url,
@@ -299,7 +356,22 @@ def send_slack_notification(webhook_url, blob_name, port_call_id, time_value, re
         headers={"Content-Type": "application/json"}
     )
     
-    if response.status_code != 200:
+    if response.status_code == 200:
+        logging.info(f"Successfully sent Slack notification for {blob_name}")
+    elif response.status_code == 429:
+        # Extract retry_after if available in response
+        retry_after = 1  # Default to 1 second
+        try:
+            response_data = response.json()
+            if "retry_after" in response_data:
+                retry_after = float(response_data["retry_after"])
+                # Update the global rate limiter with this information
+                slack_rate_limiter.update_retry_after(retry_after)
+        except (ValueError, KeyError, json.JSONDecodeError):
+            pass
+        
+        logging.error(f"Rate limited by Slack: {response.status_code}, {response.text}")
+    else:
         logging.error(f"Error sending to Slack: {response.status_code}, {response.text}")
 
 def format_xml_for_display(xml_content, max_length=2500):
@@ -347,9 +419,30 @@ def send_slack_error(webhook_url, blob_name, error_message, channel, username):
     if channel:
         message["channel"] = channel
     
+    # Use the rate limiter to control our sending rate
+    slack_rate_limiter.wait_if_needed()
+    
     # Send the error message to Slack
-    requests.post(
+    response = requests.post(
         webhook_url,
         data=json.dumps(message),
         headers={"Content-Type": "application/json"}
     )
+    
+    if response.status_code == 200:
+        logging.info(f"Successfully sent Slack error notification for {blob_name}")
+    elif response.status_code == 429:
+        # Extract retry_after if available in response
+        retry_after = 1  # Default to 1 second
+        try:
+            response_data = response.json()
+            if "retry_after" in response_data:
+                retry_after = float(response_data["retry_after"])
+                # Update the global rate limiter with this information
+                slack_rate_limiter.update_retry_after(retry_after)
+        except (ValueError, KeyError, json.JSONDecodeError):
+            pass
+        
+        logging.error(f"Rate limited by Slack for error notification: {response.status_code}, {response.text}")
+    else:
+        logging.error(f"Error sending error notification to Slack: {response.status_code}, {response.text}")
