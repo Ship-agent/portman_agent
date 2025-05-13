@@ -80,7 +80,7 @@ const light = createTheme({
     },
 });
 
-function AppRoutes({ isDarkMode, setIsDarkMode }) {
+function AppRoutes({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsDarkMode: (isDarkMode: boolean) => void }) {
     return (
         <Routes>
             {/* Public routes */}
@@ -142,7 +142,7 @@ function AppRoutes({ isDarkMode, setIsDarkMode }) {
                 } />
                 <Route path="/settings" element={
                     <Layout>
-                        <Settings />
+                        <Settings isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
                     </Layout>
                 } />
             </Route>

@@ -48,52 +48,52 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, setIsDarkMode }) => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom>
-        Settings
-      </Typography>
+      <Box sx={{ flexGrow: 1 }}>
+        <Typography variant="h4" gutterBottom>
+          Settings
+        </Typography>
 
-      <Grid container spacing={3}>
-        {/* Application Settings */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Application Settings
-              </Typography>
+        <Grid container spacing={3}>
+          {/* Application Settings */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Application Settings
+                </Typography>
 
-              <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="refresh-interval-label">Data Refresh Interval</InputLabel>
-                  <Select
-                    labelId="refresh-interval-label"
-                    id="refresh-interval-select"
-                    value={refreshInterval}
-                    label="Data Refresh Interval"
-                    onChange={handleRefreshIntervalChange}
-                  >
-                    <MenuItem value="60">Every 1 minute</MenuItem>
-                    <MenuItem value="300">Every 5 minutes</MenuItem>
-                    <MenuItem value="600">Every 10 minutes</MenuItem>
-                    <MenuItem value="1800">Every 30 minutes</MenuItem>
-                    <MenuItem value="3600">Every hour</MenuItem>
-                  </Select>
-                </FormControl>
+                <Box sx={{ mb: 3 }}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel id="refresh-interval-label">Data Refresh Interval</InputLabel>
+                    <Select
+                        labelId="refresh-interval-label"
+                        id="refresh-interval-select"
+                        value={refreshInterval}
+                        label="Data Refresh Interval"
+                        onChange={handleRefreshIntervalChange}
+                    >
+                      <MenuItem value="60">Every 1 minute</MenuItem>
+                      <MenuItem value="300">Every 5 minutes</MenuItem>
+                      <MenuItem value="600">Every 10 minutes</MenuItem>
+                      <MenuItem value="1800">Every 30 minutes</MenuItem>
+                      <MenuItem value="3600">Every hour</MenuItem>
+                    </Select>
+                  </FormControl>
 
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="default-view-label">Default View</InputLabel>
-                  <Select
-                    labelId="default-view-label"
-                    id="default-view-select"
-                    value={defaultView}
-                    label="Default View"
-                    onChange={handleDefaultViewChange}
-                  >
-                    <MenuItem value="map">Map View</MenuItem>
-                    <MenuItem value="list">List View</MenuItem>
-                    <MenuItem value="timeline">Timeline View</MenuItem>
-                  </Select>
-                </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel id="default-view-label">Default View</InputLabel>
+                    <Select
+                        labelId="default-view-label"
+                        id="default-view-select"
+                        value={defaultView}
+                        label="Default View"
+                        onChange={handleDefaultViewChange}
+                    >
+                      <MenuItem value="map">Map View</MenuItem>
+                      <MenuItem value="list">List View</MenuItem>
+                      <MenuItem value="timeline">Timeline View</MenuItem>
+                    </Select>
+                  </FormControl>
 
                   <FormControlLabel
                       control={
@@ -123,36 +123,36 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, setIsDarkMode }) => {
             </Card>
           </Grid>
 
-        {/* Vessel Tracking Settings */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Vessel Tracking Settings
-              </Typography>
-
-              <Box sx={{ mb: 3 }}>
-                <TextField
-                  fullWidth
-                  id="tracked-vessels"
-                  label="Tracked Vessels (IMO Numbers, comma-separated)"
-                  multiline
-                  rows={4}
-                  value={trackedVessels}
-                  onChange={handleTrackedVesselsChange}
-                  helperText="Enter IMO numbers separated by commas"
-                  sx={{ mb: 2 }}
-                />
-
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Currently tracking {trackedVessels.split(',').filter(v => v.trim()).length} vessels
+          {/* Vessel Tracking Settings */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Vessel Tracking Settings
                 </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                      fullWidth
+                      id="tracked-vessels"
+                      label="Tracked Vessels (IMO Numbers, comma-separated)"
+                      multiline
+                      rows={4}
+                      value={trackedVessels}
+                      onChange={handleTrackedVesselsChange}
+                      helperText="Enter IMO numbers separated by commas"
+                      sx={{ mb: 2 }}
+                  />
+
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Currently tracking {trackedVessels.split(',').filter(v => v.trim()).length} vessels
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </Box>
   );
 };
 
