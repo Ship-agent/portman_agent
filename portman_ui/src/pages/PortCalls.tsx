@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Collapse,
+  Grid,
   Grid2,
   IconButton,
   InputAdornment,
@@ -20,12 +22,13 @@ import {
   Typography
 } from '@mui/material';
 import {
+  Close as CloseIcon,
+  FilterAlt as FilterIcon,
   Search as SearchIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { PortCall } from '../types';
 import api from "../services/api";
-
 
 const PortCalls: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -38,6 +41,15 @@ const PortCalls: React.FC = () => {
   const [totalPortCalls, setTotalPortCalls] = useState<number>(0);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [loadingAllData, setLoadingAllData] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Set default date range to one week (7 days ago to today)
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const today = new Date();
+  
+  const [startDate, setStartDate] = useState<Date | null>(oneWeekAgo);
+  const [endDate, setEndDate] = useState<Date | null>(today);
 
   // Initial data load
   useEffect(() => {
@@ -81,7 +93,13 @@ const PortCalls: React.FC = () => {
       const afterParam = params.get('$after');
 
       if (afterParam) {
-        const response = await api.getPortCallsPaginated(afterParam);
+        // Pass the afterParam along with date filters
+        const response = await api.getPortCallsPaginated({
+          afterParam: afterParam,
+          startDate: startDate,
+          endDate: endDate
+        });
+        
         const newData = response?.data?.value || [];
 
         const combinedData = [...currentData, ...newData];
@@ -108,9 +126,19 @@ const PortCalls: React.FC = () => {
     }
   };
 
-  // Filter port calls based on search term and sort by created date (newest first)
+  const handleClearFilters = () => {
+    // Reset to one week ago (default filter)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    setStartDate(oneWeekAgo);
+    setEndDate(new Date()); // Today
+    setPage(0);
+  };
+
+  // Filter port calls based on search term only (date filtering is now done server-side)
   const filteredPortCalls = (portCalls || [])
     .filter((call: PortCall) =>
+      // Text search filter
       call?.vesselname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       call?.imolloyds?.toString().includes(searchTerm) ||
       call?.portareaname?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,7 +156,18 @@ const PortCalls: React.FC = () => {
 
   const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString();
+    const date = new Date(dateString);
+    
+    // Format as dd.mm.yyyy - hh.mm.ss
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    
+    return `${day}.${month}.${year} - ${hours}.${minutes}.${seconds}`;
   };
 
   const handleViewXML = (url: string) => {
@@ -281,17 +320,33 @@ const PortCalls: React.FC = () => {
 
             <TableCell>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="body1" data-cy="port-area">
-                  {call?.portareaname || 'N/A'}
+                <Typography variant="body1" data-cy="port-to-visit">
+                  {call?.porttovisit || 'N/A'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" data-cy="berth-name">
-                  {call?.berthname || 'N/A'}
+                <Typography variant="body2" color="text.secondary" data-cy="port-area">
+                  {call?.portareaname || 'N/A'}
                 </Typography>
               </Box>
             </TableCell>
 
             <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="eta-value">
-              <Typography>{formatDateTime(call?.eta)}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography>{formatDateTime(call?.eta)}</Typography>
+                {call?.noa_xml_url && (
+                  <Tooltip title="View NOA XML">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewXML(call.noa_xml_url!);
+                      }}
+                    >
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             </TableCell>
 
             <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="ata-value">
@@ -312,26 +367,12 @@ const PortCalls: React.FC = () => {
                         </IconButton>
                       </Tooltip>
                   )}
-                  {call?.noa_xml_url && (
-                      <Tooltip title="View NOA XML">
-                        <IconButton
-                            color="primary"
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewXML(call.noa_xml_url!);
-                            }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                  )}
                 </Box>
               </Box>
             </TableCell>
 
             <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="etd-value">
-              {formatDateTime(call?.etd)}
+              <Typography>{formatDateTime(call?.etd)}</Typography>
             </TableCell>
           </TableRow>
 
@@ -355,8 +396,9 @@ const PortCalls: React.FC = () => {
                     }
                   }}>
                     <GridItem title="Port Call ID" value={call.portcallid} />
-                    <GridItem title="Vessel Type Code" value={call.vesseltypecode} />
+                    <GridItem title="Vessel Type" value={call.vesseltypecode} />
                     <GridItem title="Port to Visit" value={call.porttovisit} />
+                    <GridItem title="Port Area" value={call.portareaname} />
                     <GridItem title="Berth Code" value={call.berthcode} />
                     <GridItem title="Previous Port" value={call.prevport} />
                     <GridItem title="Next Port" value={call.nextport} />
@@ -378,6 +420,40 @@ const PortCalls: React.FC = () => {
     );
   }
 
+  // Fetch port calls when date range changes
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Send date filter parameters to the API
+        const response = await api.getPortCallsPaginated({
+          startDate: startDate,
+          endDate: endDate
+        });
+        
+        const data = response?.data?.value || [];
+        setPortCalls(data);
+        setTotalPortCalls(data.length);
+
+        // Store the next page URL if available
+        if (response?.data?.nextLink) {
+          setNextPageUrl(response.data.nextLink);
+          // Automatically start loading all data with the same date filters
+          loadAllData(response.data.nextLink, data);
+        }
+      } catch (err) {
+        console.error('Error fetching port calls:', err);
+        setError('Failed to load port calls. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [startDate, endDate]); // Re-fetch when date filters change
+
   if (loading && portCalls.length === 0) {
     return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -388,7 +464,7 @@ const PortCalls: React.FC = () => {
 
   return (
       <Box sx={{ p: 3 }} data-cy="portcalls-container">
-        <Box sx={{
+        <Box sx={{ 
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           justifyContent: 'space-between',
@@ -399,25 +475,88 @@ const PortCalls: React.FC = () => {
           <Typography variant="h4" component="h1" data-cy="portcalls-title">
             Port Calls
           </Typography>
-          <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' }, 
+            gap: 2,
+            width: { xs: '100%', md: 'auto' } 
+          }}>
             <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search vessels..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                  ),
-                }}
-                size="small"
-                data-cy="portcalls-search"
+              variant="outlined"
+              placeholder="Search vessels..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+              data-cy="portcalls-search"
+              sx={{ flexGrow: 1 }}
             />
+            <Button 
+              variant="outlined" 
+              color="primary"
+              startIcon={<FilterIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              size="small"
+            >
+              Filters
+            </Button>
           </Box>
         </Box>
+
+        <Collapse in={showFilters} sx={{ mb: 3 }}>
+          <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Date Filters</Typography>
+              <IconButton size="small" onClick={handleClearFilters} disabled={!startDate && !endDate}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} sm={5}>
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const date = e.target.value ? new Date(e.target.value) : null;
+                    setStartDate(date);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={5}>
+                <TextField
+                  fullWidth
+                  label="End Date"
+                  type="date"
+                  value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const date = e.target.value ? new Date(e.target.value) : null;
+                    setEndDate(date);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <Typography variant="body2" sx={{ textAlign: 'center' }}>
+                  {filteredPortCalls.length} results
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Collapse>
 
         {error && (
             <Alert severity="error" sx={{ mb: 3 }} data-cy="portcalls-error">
@@ -448,12 +587,11 @@ const PortCalls: React.FC = () => {
             <Table data-cy="portcalls-table" sx={{ tableLayout: 'fixed' }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'primary.main' }}>
-                  {/*<TableCell width="50px" />*/}
-                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white' }} data-cy="table-header-vessel">Vessel</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white' }} data-cy="table-header-status">Status</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-vessel">Vessel</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-status">Status</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-port">Port</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-eta">ETA</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-ata">ATA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-eta">ETA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-ata">ATA</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-etd">ETD</TableCell>
                 </TableRow>
               </TableHead>
