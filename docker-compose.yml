@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=password
+
+  dab:
+    image: mcr.microsoft.com/azure-databases/data-api-builder
+    container_name: dab
+    platform: linux/amd64
+    ports:
+      - 5000:5000
+    volumes:
+      - ./dab/dab-config.json:/App/dab-config.json
+    environment:
+      - DATABASE_CONNECTION_STRING=Host=postgres;Port=5432;Database=portman;Username=postgres;Password=password
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+    driver: local
+    name: portman_agent_pgdata
