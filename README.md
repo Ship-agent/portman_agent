@@ -47,7 +47,7 @@
 
 ---
 
-This diagram shows the Maritime National Single Window (MNSW) system’s data flows and integration with national authorities and international systems. It connects **Fintraffic Digitraffic**, **Portman**, and **MNSW**, facilitating automated (S2S) and manual data exchanges. The system ensures compliance with **EU Regulation 2019/1239**, streamlining maritime reporting across the EU.  
+This diagram shows the Maritime National Single Window (MNSW) system's data flows and integration with national authorities and international systems. It connects **Fintraffic Digitraffic**, **Portman**, and **MNSW**, facilitating automated (S2S) and manual data exchanges. The system ensures compliance with **EU Regulation 2019/1239**, streamlining maritime reporting across the EU.  
 
 ![portman_agent_MNSW_graph.png](assets/portman_agent_MNSW_graph.png)
 Portman Agent project scope has been marked with a red box in the diagram.
@@ -240,10 +240,16 @@ az functionapp config appsettings set \
     "DB_NAME=portman" \
     "DB_USER=adminuser" \
     "DB_PASSWORD=<your_postgres_db_password>"
+    "OPENAI_API_KEY=<your_azure_openai_apikey>" \
+    "OPENAI_ENDPOINT=https://<your_azure_openai_name>.openai.azure.com/" \
+    "OPENAI_DEPLOYMENT_NAME=cargo-generator" \
+    "OPENAI_API_VERSION=2025-02-01-preview" \
     "XML_CONVERTER_FUNCTION_URL=<your_azure_xml_converter_function_url_with_function_key>" \
     "SLACK_WEBHOOK_ENABLED=<true/false>" \
     "SLACK_WEBHOOK_URL=<web_hook_url_of_your_slack_incoming_webhook_app>" \
-    "SLACK_CHANNEL=<target_channel_for_your_slack_web_hook>"
+    "SLACK_CHANNEL=<target_channel_for_your_slack_web_hook>" \
+    "FUNCTION_APP_URL=https://<your_function_app_name>.azurewebsites.net" \
+    "VESSEL_DETAILS_FUNCTION_KEY=<your_vessel_details_function_key>"
 ```
 
 - The Slack Webhook variables are optional  
@@ -262,6 +268,9 @@ func azure functionapp publish <your_function_app_name> --python
 - timer_trigger
 - blob_trigger
 - xml_converter
+- cargo_generator
+- noa_generator
+- vessel_details
 
 **The Portman functions can be explored from:**  
 - Azure Portal -> Function App -> Functions
@@ -272,17 +281,35 @@ func azure functionapp publish <your_function_app_name> --python
 
 **Invoke the http-trigger of the Portman Agent function:**  
 - Use the function URL with `code` parameter
-- Define trackable vessels (IMO-numbers separated with comma) with `imo` parameter (optional)  
+- Define trackable vessels (IMO-numbers separated with comma) with `imo` parameter (optional)
 
 **Portman XML-converter (xml_converter)**
-- Portman XML-converter is automatically triggered by Portman Agent function when there is a port arrival detected  
-- Converts portcall json-data to EMSWe ATA-xml (Notification of actual arrival) and stores the generated xml into Azure blob-storage  
+- Portman XML-converter is automatically triggered by Portman Agent function when there is a certain event detected
+- These are the supported EMSWe-XML messages
+  - Request for Visit ID (VID), generated when there is a new port call detected
+  - Notice of pre arrival (NOA), generated when ETA timestamp id updated in port call data
+  - Notification of Actual Arrival (ATA), generated when there is a new port arrival detected
+- XML files are stored in Azure blob-storage
 
 **Portman Notificator (blob_trigger)**  
-- Portman notificator is automatically triggered when a new ATA-xml is pushed into Azure blob-storage
-- Sends a Slack notification based on the ATA-xml message to the defined Slack channel  
+- Portman notificator is automatically triggered when a new xml is pushed into Azure blob-storage
+- A unique message format is defined for ATA, NOA and VID messages
+- Sends a Slack notification based on the xml to the defined Slack channel
 
 ![slack_ata_notification.jpg](assets/slack_ata_notification.jpg)
+
+**Cargo Generator**  
+- Portman contains an Azure Open AI service for imaginary but realistic Cargo Generator for a desired vessel
+- LLM deployed in Azure Open AI is `GPT4o`
+- Generates a realistic EMSWe Cargo Declaration (manifest) based on vessel's IMO, type and port of destination
+
+**NOA XML-Generator**  
+- Generating NOA_xml from certain port call is also possible to trigger manually
+
+**Vessel Details**  
+- REST API for querying vessel details based on IMO-number
+- Backend service uses Digitraffic open API
+
 ---
 ### **PostgreSQL Database**
 **Query `voayges` and `arrivals` from Azure PortgreSQL Server:**  
@@ -342,27 +369,34 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 - Install local PostgreSQL database  
-- Set the right db-credentials by environment variables:  
-```
-# macOS/Linux:
 
-export DB_NAME="portman_db"
-export DB_USER="custom_user"
-export DB_PASSWORD="secure_password"
-export DB_HOST="192.168.1.100"
-export DB_PORT="5432"
-```
-Or
-```
-# Windows:
+Add `local.settings.json` to the project root directory and set the properties:  
 
-set DB_NAME=portman_db
-set DB_USER=custom_user
-set DB_PASSWORD=secure_password
-set DB_HOST=192.168.1.100
-set DB_PORT=5432
+```bash
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<AS_DESCRIBED_BELOW>",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "DB_HOST": "localhost", /* Set if not 'localhost' */
+    "DB_PORT": "5432",  /* Set if not '5432' */
+    "DB_USER": "postgres", /* Your postgres admin-user */
+    "DB_PASSWORD": "password", /* Your postgres password */
+    "SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/<HOOK_KEY_FOR_PORTMAN>", /* Set if you want to test Slack Notifications */
+    "SLACK_CHANNEL": "@<first_name>.<lastname>", /* E.G. your own slack account */
+    "SLACK_WEBHOOK_ENABLED": "true/false", /* Enable/disable Slack notifications (defaults to false) */
+    "OPENAI_API_KEY": "<AZURE_OPEN_API_KEY>", /* OpenAI API key, if you want to test Cargo Generator */
+    "OPENAI_ENDPOINT": "https://<YOUR_OPENAI_NAME>-openai.openai.azure.com/", /* OpenAI endpoint, if you want to test Cargo Generator */
+    "OPENAI_DEPLOYMENT_NAME": "cargo-generator", /* OpenAI deployment name */
+    "OPENAI_API_VERSION": "2025-02-01-preview", /* OpenAI API version */
+    "LOG_PROMPTS": "true/false", /* Enable, if you want to log OpenAi API promts (defaults to false) */
+    "LOG_RESPONSES": "true/false", /* Enable, if you want to log OpenAi API responses (defaults to false) */
+    "FUNCTION_APP_URL": "http://localhost:7071" /* Your local Azure Functions URL */
+  }
+}
 ```
-- Add `local.settings.json` to the project root directory with following content:  
+
+Either existing Azure Storage Account or Azurite must be used to run functions locally.
 
 Using Azure Storage Account:
 ```bash
@@ -371,7 +405,7 @@ Using Azure Storage Account:
   "Values": {
     "AzureWebJobsStorage": "<YOUR_AZURE_STORAGE_ACCOUNT_CONNECTION_STRING>",
     "FUNCTIONS_WORKER_RUNTIME": "python"
-  }
+    ...
 }
 ```
 **OR** if you want to use local Azure Storage emulator `Azurite`:
@@ -381,21 +415,22 @@ Using Azure Storage Account:
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python"
-  }
+    ...
 }
 ```
 - The default local storage connection (UseDevelopmentStorage=true) expects Azurite to run on localhost (127.0.0.1:10000)  
-- If you don’t have Azurite installed, install it via npm:
+- If you don't have Azurite installed, install it via npm:
 ```bash
 npm install -g azurite
 ```
 
-Then, start it manually:
+- Then, start it manually:
 
 ```bash
 azurite --silent &
 ```
-- Start Azure functions locally: 
+
+Finally start Azure functions locally: 
 ```
 func start
 ```
@@ -412,51 +447,82 @@ func start
 
 ## **📌 Architecture Diagram**
 ```mermaid
-graph TD;
-    subgraph External API
+graph LR;
+    subgraph External_API[External API]
       portcall_api[Open Portcall API]
+      vessel_details_api[Vessel Details API]
     end
 
     subgraph Azure
-        storage[Blob Storage]
-        db[PostgreSQL Database]
-        portman_function[Portman Agent Function]
-        insights[Application Insights]
-        dab[DAB - Azure Container App]
-        xml_converter[XML Converter Function]
-        slack_notificator[Slack Notificator Function]
-        portman_ui[Portman Web UI]
-        subgraph FunctionTriggers
+        subgraph Storage
+            storage[Blob Storage]
+            db[PostgreSQL Database]
+        end
+        
+        subgraph Functions
+            portman_function[Portman Agent Function]
+            xml_converter[XML Converter Function]
+            slack_notificator[Slack Notificator Function]
+        end
+        
+        subgraph Services
+            insights[Application Insights]
+            dab[DAB - Container App]
+            open_ai[Open AI Cargo Generator]
+            portman_ui[Portman Web UI]
+        end
+        
+        subgraph Triggers
           http[HTTP Trigger]
           timer[Timer Trigger]
           blob[Blob Trigger]
+          noa_generator[NOA-XML Generator]
+          cargo_generator[Cargo Generator]
+          vessel_details[Vessel Details]
         end
     end
 
     subgraph External
-      user[Browser / Client App] --> portman_ui
+      user[Browser / Client App]
     end
 
     subgraph Slack
-      slack_notificator -->|Sends ATA notifications| slack_channel
+      slack_channel[Slack Channel]
     end
 
-    user -->|Calls REST/GraphQL| dab
-    user -->|Calls| http
-    dab -->|Reads Data| db
-    dab -->|Sends Logs| insights
-    portman_function -->|Reads/Writes Data| db
-    portman_function -->|Sends Logs| insights
-    portman_function -->|On arrival| xml_converter
-    portman_function -->|Retrives data| portcall_api
-    timer --> |Triggers| portman_function
-    http --> |Triggers| portman_function
-    blob --> |Triggers| slack_notificator
-    xml_converter -->|Sends ATA-xml| storage
-    xml_converter -->|Sends Logs| insights
-    blob -->|Polls ATA-xmls| storage
-    slack_notificator -->|Sends Logs| insights
-    portman_ui -->|Calls REST/GraphQL| dab
+    user --> portman_ui
+    user --> http
+    user --> cargo_generator
+    user --> vessel_details
+    user --> dab
+    
+    dab --> db
+    dab --> insights
+    
+    portman_function --> db
+    portman_function --> insights
+    portman_function --> xml_converter
+    portman_function --> portcall_api
+    
+    timer --> portman_function
+    http --> portman_function
+    
+    xml_converter --> storage
+    xml_converter --> insights
+    
+    blob --> slack_notificator
+    blob --> storage
+    
+    slack_notificator --> insights
+    slack_notificator --> slack_channel
+    
+    portman_ui --> dab
+    portman_ui --> portcall_api
+    portman_ui --> noa_generator
+    
+    cargo_generator --> open_ai
+    noa_generator --> xml_converter
+    vessel_details --> vessel_details_api
 ```
 
 ---

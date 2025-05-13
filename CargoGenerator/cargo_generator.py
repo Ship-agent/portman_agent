@@ -37,13 +37,6 @@ def cargo_generator(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        # Look up vessel details from the vessel details API
-        vessel_details = get_vessel_details(imo)
-        if vessel_details:
-            logging.info(f"Retrieved vessel details for IMO {imo}")
-        else:
-            logging.warning(f"No vessel details found for IMO {imo}")
-        
         # Set up the OpenAI client for Azure OpenAI
         client = AzureOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
@@ -65,16 +58,6 @@ def cargo_generator(req: func.HttpRequest) -> func.HttpResponse:
         while attempt < max_retries:
             try:
                 cargo_data = generate_cargo_data(imo, port_to_visit, prev_port, client, deployment_name)
-                
-                # Add vessel details to the response after OpenAI has generated the cargo data
-                if vessel_details and isinstance(cargo_data, dict):
-                    if "vesselDetails" not in cargo_data:
-                        cargo_data["vesselDetails"] = {}
-                    
-                    # Update the vesselDetails with the fetched data
-                    for key, value in vessel_details.items():
-                        if value is not None:
-                            cargo_data["vesselDetails"][key] = value
                 
                 return func.HttpResponse(
                     json.dumps(cargo_data),
@@ -143,7 +126,7 @@ def get_vessel_details(imo):
         return None
 
 def generate_cargo_data(imo, port_to_visit, prev_port, client, deployment_name):
-    """Generate cargo declaration data using Azure OpenAI without including vessel details in the prompt"""
+    """Generate cargo declaration data using Azure OpenAI including vessel details in the prompt"""
     
     system_prompt = """
     You are a cargo data generator for maritime vessels. You will be given a vessel's IMO number, previous port of call, and port to visit, 
@@ -159,17 +142,34 @@ def generate_cargo_data(imo, port_to_visit, prev_port, client, deployment_name):
     Format the response as a JSON object that can be used directly in a cargo declaration system.
     """
     
-    # Prepare prompt with additional prev_port parameter
+    # Get vessel details to include in the prompt
+    vessel_details = get_vessel_details(imo)
+    vessel_details_text = ""
+    
+    if vessel_details:
+        vessel_details_text = "Vessel details:\n"
+        for key, value in vessel_details.items():
+            if value is not None:
+                vessel_details_text += f"- {key}: {value}\n"
+    else:
+        vessel_details_text = "Vessel details are not available."
+    
+    # Prepare prompt with additional prev_port parameter and vessel details
     prev_port_text = f"coming from previous port {prev_port}" if prev_port else "with unspecified previous port"
     user_prompt = f"""
     Generate a complete cargo declaration for vessel with IMO number {imo} {prev_port_text} and arriving at port {port_to_visit}.
     
+    {vessel_details_text}
+    
     Generate a realistic cargo manifest based on:
     1. Transport Movement details (including previous port: {prev_port if prev_port else 'unknown'} and port to visit: {port_to_visit})
-    2. 5-10 cargo items with appropriate weights and descriptions
-    3. Container details if applicable
-    4. Hazardous cargo details if applicable
-    5. All required identifiers and codes according to EMSWe CGA specification
+    2. 1-10 cargo items with appropriate weights and descriptions depending on vessel type
+    3. There should be any unrealistic items for vessel type, for example oil tanker should not have containers
+    4. Vessel type is included in vessel details above
+    5. Container details if applicable
+    6. Hazardous cargo details if applicable
+    7. All required identifiers and codes according to EMSWe CGA specification
+    8. Do not add vessel details to the response, they are already provided above
     
     Current date: {datetime.now().strftime('%Y-%m-%d')}
     """
@@ -201,6 +201,17 @@ def generate_cargo_data(imo, port_to_visit, prev_port, client, deployment_name):
             content = response.choices[0].message.content
             if content:
                 cargo_data = json.loads(content)
+                
+                # Also add vessel details to the response for completeness
+                if vessel_details and isinstance(cargo_data, dict):
+                    # Only add vessel details if they don't already exist in the response
+                    if not has_vessel_info(cargo_data):
+                        cargo_data["vesselDetails"] = {}
+                        # Update the vesselDetails with the fetched data
+                        for key, value in vessel_details.items():
+                            if value is not None:
+                                cargo_data["vesselDetails"][key] = value
+                
                 return cargo_data
             else:
                 return {"error": "Empty response from OpenAI"}
@@ -213,3 +224,14 @@ def generate_cargo_data(imo, port_to_visit, prev_port, client, deployment_name):
             "generated_text": response.choices[0].message.content if hasattr(response.choices[0].message, 'content') else "No content",
             "note": "Response could not be parsed as JSON. Please format the text into proper JSON structure."
         } 
+    
+# Check recursively if vesselDetails or vesselInformation exists in cargo_data
+def has_vessel_info(data):
+    if not isinstance(data, dict):
+        return False
+    if "vesselDetails" in data or "vesselInformation" in data:
+        return True
+    for value in data.values():
+        if isinstance(value, dict) and has_vessel_info(value):
+            return True
+    return False

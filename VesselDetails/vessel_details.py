@@ -25,7 +25,7 @@ def vessel_details(req: func.HttpRequest) -> func.HttpResponse:
         vessel_data = fetch_vessel_details(imo)
         
         if vessel_data:
-            logging.info(f"Retrieved vessel details for IMO {imo}")
+            logging.info(f"Retrieved vessel details for IMO {imo}: {vessel_data}")
             return func.HttpResponse(
                 json.dumps(vessel_data),
                 mimetype="application/json"
