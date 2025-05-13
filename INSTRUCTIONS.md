@@ -108,7 +108,31 @@ The application provides functionality to download XML documents in different fo
 - **NOA XML**: Notification of Arrival XML documents
 - **VID XML**: Vessel Information Data XML documents
 
-These XML buttons are available in the Port Calls view and appear when the respective XML URL is available for a port call.
+These XML buttons are available in the Port Calls view:
+- VID XML button appears next to vessel name in the Vessel column
+- ATA XML button appears in the ATA column
+- NOA XML button appears in the ETA column
+
+Each button only appears when the corresponding XML is available for a port call.
+
+## Port Calls View Features
+
+### Sorting
+Port calls are ordered from newest to oldest by default:
+- Server-side sorting by created date (descending)
+- Client-side sorting for consistency
+
+### Date Range Filtering
+Port calls can be filtered by date range:
+- Default range: Last 7 days (one week from today)
+- Filter panel with start/end date input fields
+- Clear filters button to reset to default range
+- Collapsible filter panel with toggle button
+
+### Data Loading Optimization
+- Date filtering performed server-side
+- Date parameters use DAB OData $filter syntax (e.g., "$filter=eta ge [date] and eta le [date]")
+- Pagination maintains date filter constraints
 
 ## Routing Configuration
 

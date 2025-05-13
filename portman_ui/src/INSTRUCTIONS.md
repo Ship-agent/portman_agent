@@ -52,4 +52,37 @@ All table components implement client-side search that filters already loaded da
   
 - Port Calls use color-coded chips:
   - Green: Arrived (has ATA)
-  - Blue: Expected (no ATA yet) 
+  - Blue: Expected (no ATA yet)
+
+## XML Downloads
+
+The application provides XML download functionality in the Port Calls view:
+
+- **VID XML**: Vessel Information Data - appears next to vessel name in the Vessel column
+- **ATA XML**: Actual Time of Arrival - appears in the ATA column
+- **NOA XML**: Notification of Arrival - appears in the ETA column
+
+Each button only appears when the corresponding XML is available for a port call.
+
+## Port Calls View
+
+### Sorting
+Port calls are ordered from newest to oldest by default:
+- Server-side sorting by created date (descending)
+- Client-side sorting for consistency
+
+### Date Range Filtering
+The Port Calls view includes date range filtering:
+- Default range: Last 7 days (one week from today)
+- Start/end date input fields
+- Clear filters button resets to default range
+- Filter toggle button shows/hides the filter panel
+
+### Data Loading Optimization
+- Date filtering performed server-side
+- Date parameters use DAB OData $filter syntax (e.g., "$filter=eta ge [date] and eta le [date]")
+- Pagination maintains date filter constraints
+
+## Deployment
+
+For information about the CI/CD pipeline that deploys the UI to Azure Static Web Apps, see the DEPLOYMENT_INFO.md file in the project root. 

@@ -65,10 +65,39 @@ export const api = {
   },
 
   // Port calls with pagination support
-  getPortCallsPaginated: async (afterParam?: string) => {
+  getPortCallsPaginated: async (options?: {
+    afterParam?: string;
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }) => {
     if (USE_MOCK_DATA) {
-      // Sort mock data from newest to oldest
-      const sortedCalls = [...mockPortCalls].sort((a, b) => 
+      // Filter by date range if provided
+      let filteredCalls = [...mockPortCalls];
+
+      if (options?.startDate || options?.endDate) {
+        filteredCalls = filteredCalls.filter(call => {
+          const callDate = new Date(call.eta);
+          
+          // Check if after start date
+          if (options.startDate && callDate < options.startDate) {
+            return false;
+          }
+          
+          // Check if before end date (set to end of day)
+          if (options.endDate) {
+            const endOfDay = new Date(options.endDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (callDate > endOfDay) {
+              return false;
+            }
+          }
+          
+          return true;
+        });
+      }
+      
+      // Sort filtered data from newest to oldest
+      const sortedCalls = filteredCalls.sort((a, b) => 
         new Date(b.created).getTime() - new Date(a.created).getTime()
       );
       return { data: { value: sortedCalls, nextLink: null } };
@@ -77,11 +106,35 @@ export const api = {
     try {
       const params: any = {
         // Add orderby parameter to sort by created date in descending order
-        '$orderby': 'created desc'
+        '$first': '1000'
       };
-      if (afterParam) {
-        params['$after'] = afterParam;
+      // Add pagination parameter if provided
+      if (options?.afterParam) {
+        params['$after'] = options.afterParam;
       }
+      
+      // Add date filtering using DAB $filter query parameter format
+      if (options?.startDate || options?.endDate) {
+        let filterConditions = [];
+        
+        if (options.startDate) {
+          const startDateISOString = options.startDate.toISOString();
+          filterConditions.push(`eta ge ${startDateISOString}`);
+        }
+        
+        if (options.endDate) {
+          // Set to end of day for inclusive end date
+          const endDate = new Date(options.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          const endDateISOString = endDate.toISOString();
+          filterConditions.push(`eta le ${endDateISOString}`);
+        }
+        
+        if (filterConditions.length > 0) {
+          params['$filter'] = filterConditions.join(' and ');
+        }
+      }
+      
       const response = await apiClient.get('/voyages', { params });
       return response;
     } catch (error) {
