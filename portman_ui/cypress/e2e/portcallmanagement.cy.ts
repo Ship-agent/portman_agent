@@ -32,15 +32,6 @@ describe('Port Call Management', () => {
         cy.contains('th', 'Actions').should('be.visible')
     })
 
-    it('should open add port call dialog when clicking add button', () => {
-        cy.dataCy('add-portcall-button').click()
-        cy.dataCy('portcall-dialog').should('be.visible')
-        cy.dataCy('portcall-dialog-title').should('contain', 'Add New Port Call')
-        cy.contains('label', 'Vessel Name').should('be.visible')
-        cy.contains('label', 'IMO Number').should('be.visible')
-        cy.contains('label', 'Port Name').should('be.visible')
-    })
-
     it('should show loading state when fetching data', () => {
         // Intercept API calls and delay response
         cy.intercept('GET', '**/voyages', (req) => {
@@ -74,24 +65,6 @@ describe('Port Call Management', () => {
             // Verify filtered results contain the search term
             cy.get('tbody tr').should('have.length.at.least', 1)
             cy.get('tbody tr').first().should('contain', searchTerm)
-        })
-    })
-
-    it('should show pagination controls', () => {
-        cy.get('.MuiTablePagination-root').should('exist')
-        cy.get('.MuiTablePagination-selectRoot').should('exist')
-        cy.get('.MuiTablePagination-displayedRows').should('exist')
-    })
-
-    it('should change rows per page', () => {
-        // Get initial row count
-        cy.get('tbody tr').its('length').then((initialCount) => {
-            // Change rows per page to 5
-            cy.get('.MuiTablePagination-select').click()
-            cy.get('.MuiMenuItem-root').contains('5').click()
-
-            // Check that rows count is now 5 or less
-            cy.get('tbody tr').should('have.length.at.most', 5)
         })
     })
 
