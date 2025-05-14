@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Typography,
   Box,
-  Paper,
   FormControl,
   InputLabel,
   Select,
@@ -17,12 +16,16 @@ import {
 } from '@mui/material';
 import { mockTrackedVessels } from '../data/mockData';
 
-const Settings: React.FC = () => {
+interface SettingsProps {
+  isDarkMode: boolean;
+  setIsDarkMode: (value: boolean) => void;
+}
+
+const Settings: React.FC<SettingsProps> = ({ isDarkMode, setIsDarkMode }) => {
   const [refreshInterval, setRefreshInterval] = React.useState('300');
   const [defaultView, setDefaultView] = React.useState('map');
   const [trackedVessels, setTrackedVessels] = React.useState(mockTrackedVessels.join(','));
   const [autoRefresh, setAutoRefresh] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
 
   const handleRefreshIntervalChange = (event: SelectChangeEvent) => {
     setRefreshInterval(event.target.value);
@@ -41,12 +44,12 @@ const Settings: React.FC = () => {
   };
 
   const handleDarkModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setDarkMode(event.target.checked);
+    setIsDarkMode(event.target.checked);
   };
 
   return (
       <Box sx={{ flexGrow: 1 }}>
-        <Typography variant="h4" gutterBottom component="div">
+        <Typography variant="h4" gutterBottom>
           Settings
         </Typography>
 
@@ -107,7 +110,7 @@ const Settings: React.FC = () => {
                   <FormControlLabel
                       control={
                         <Switch
-                            checked={darkMode}
+                            checked={isDarkMode}
                             onChange={handleDarkModeChange}
                             name="darkMode"
                         />
@@ -144,45 +147,6 @@ const Settings: React.FC = () => {
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Currently tracking {trackedVessels.split(',').filter(v => v.trim()).length} vessels
                   </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* API Configuration */}
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  API Configuration
-                </Typography>
-
-                <Box sx={{ mb: 3 }}>
-                  <TextField
-                      fullWidth
-                      id="api-url"
-                      label="Digitraffic API URL"
-                      value="https://meri.digitraffic.fi/api/port-call/v1/port-calls"
-                      disabled
-                      sx={{ mb: 2 }}
-                  />
-
-                  <TextField
-                      fullWidth
-                      id="function-url"
-                      label="Azure Function URL"
-                      value="https://portman-function-app.azurewebsites.net/api/http-trigger"
-                      sx={{ mb: 2 }}
-                  />
-
-                  <TextField
-                      fullWidth
-                      id="function-key"
-                      label="Function Key"
-                      type="password"
-                      value="********"
-                      sx={{ mb: 2 }}
-                  />
                 </Box>
               </CardContent>
             </Card>

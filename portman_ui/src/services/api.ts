@@ -3,7 +3,7 @@ import { AISResponse, ArrivalUpdate, PortCall } from '../types';
 import { mockArrivalUpdates, mockPortCalls, mockTrackedVessels } from '../data/mockData';
 
 // @ts-ignore
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 // @ts-ignore
 const AIS_API_BASE_URL = import.meta.env.VITE_AIS_API_BASE_URL;
 

@@ -65,6 +65,7 @@ Before deploying **locally**, ensure you have:
 ```bash
 az login
 ```
+
 ✅ **Backend Storage for Terraform State** (Azure Storage Account with blob container)
 
 ### **1️⃣ Set Up Terraform and define Azure storage for storing Terraform state**  
@@ -345,7 +346,25 @@ curl -L 'https://<AZURE_CONTAINER_APP_NAME>.<RANDOM_PART>.<AZURE_LOCATION>.azure
 - OpenAPI document available at endpoint `/openapi`
 ---
 
-## **Running Azure functions locally**  
+## **Setting up a local development environment**
+There is a `docker-compose.yml` for running PostgreSQL and DAB (Data API Builder) locally. Just run
+
+`docker compose up -d`
+
+No need to set up any DB-credentials explicitly. Services are listening on default ports:
+```
+PostgreSQL: 5432
+DAB: 5000
+```
+Running UI and Azure functions locally are also using these defaults.
+
+To shut down
+
+`docker compose down`
+
+🚨 *Starting DAB before Portman-DB is initialized produces errors*
+
+### **Running Azure functions locally**  
 Azure functions can be runned in local environment using Azure Functions Core Tools.  
 
 - Install [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=macos%2Cisolated-process%2Cnode-v4%2Cpython-v2%2Chttp-trigger%2Ccontainer-apps&pivots=programming-language-python)  
@@ -434,6 +453,13 @@ Finally start Azure functions locally:
 ```
 func start
 ```
+
+### **Steps for running local development environment, in short**  
+| Service | Command |
+|-|-|
+| **PostgreSQL & DAB** | `docker compose up -d` |
+| **Azure functions** | `func start` |
+| **Portman-UI** | `cd portman_ui && npm run dev` |
 
 ---
 

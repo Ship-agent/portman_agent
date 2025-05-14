@@ -1,25 +1,3 @@
-#resource "azurerm_service_plan" "dab_plan" {
-#  name                = "${var.naming_prefix}-dab-asp"
-#  resource_group_name = var.resource_group_name
-#  location            = var.location
-#  os_type             = "Linux"
-#  sku_name            = "B1"
-#}
-
-#resource "azurerm_storage_container" "dab_config" {
-#  name                  = var.config_container_name
-#  storage_account_name  = var.storage_account_name
-#  container_access_type = "private"
-#}
-
-#resource "azurerm_storage_blob" "dab_config_json" {
-#  name                   = "dab-config.json"
-#  storage_account_name   = var.storage_account_name
-#  storage_container_name = azurerm_storage_container.dab_config.name
-#  type                   = "Block"
-#  source                 = "${path.module}/dab-config.json" # Uploads local `dab-config.json`
-#}
-
 # Create an Azure Storage Share for the DAB config
 resource "azurerm_storage_share" "dab_config_share" {
   name                 = "dab-config-files"
@@ -31,46 +9,8 @@ resource "azurerm_storage_share" "dab_config_share" {
 resource "azurerm_storage_share_file" "dab_config_json" {
   name             = "dab-config.json"
   storage_share_id = azurerm_storage_share.dab_config_share.id
-  source           = "${path.module}/dab-config.json" # Ensure file exists locally
+  source           = "../../dab/dab-config.json" # Using dab-config.json from project root /dab folder
 }
-
-#resource "azurerm_linux_web_app" "dab_app" {
-#  name                = "${var.naming_prefix}-dab-app"
-#  resource_group_name = var.resource_group_name
-#  location            = var.location
-#  service_plan_id     = azurerm_service_plan.dab_plan.id
-#
-#  site_config {
-#    always_on     = true
-#    ftps_state    = "Disabled"
-#    http2_enabled = true
-#    application_stack {
-#      docker_registry_url = "https://mcr.microsoft.com"
-#      docker_image_name   = "azure-databases/data-api-builder:latest"
-#    }
-#  }
-#
-#  storage_account {
-#    account_name = var.storage_account_name
-#    name         = "dab-config"
-#    type         = "AzureFiles"
-#    share_name   = azurerm_storage_share.dab_config_share.name
-#    access_key   = var.storage_account_access_key
-#    mount_path   = "/App/dab-config" # Ensures App Service can access the file
-#  }
-#
-#  app_settings = {
-#    "DAB_ENVIRONMENT"                     = "Development"
-#    "DATABASE_CONNECTION_STRING"          = var.database_connection_string
-#    "DAB_CONFIG_PATH"                     = "/App/dab-config/dab-config.json"
-#    "DAB_PORT"                            = "80"
-#    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "true"
-#    #"DAB_CONFIG_STORAGE_ACCOUNT"     = var.storage_account_name
-#    #"DAB_CONFIG_CONTAINER_NAME"      = azurerm_storage_container.dab_config.name
-#    #"DAB_CONFIG_BLOB_NAME"           = azurerm_storage_blob.dab_config_json.name
-#    "APPINSIGHTS_INSTRUMENTATIONKEY" = var.ai_instrumentation_key
-#  }
-#}
 
 resource "azurerm_container_app_environment" "dab_env" {
   name                = "${var.naming_prefix}-dap-cont-env"
@@ -89,9 +29,8 @@ resource "azurerm_container_app_environment_storage" "dab_storage" {
 }
 
 resource "azurerm_container_app" "dab_cont" {
-  name                = "${var.naming_prefix}-dab-cont"
-  resource_group_name = var.resource_group_name
-  #location                     = var.location
+  name                         = "${var.naming_prefix}-dab-cont"
+  resource_group_name          = var.resource_group_name
   container_app_environment_id = azurerm_container_app_environment.dab_env.id
 
   revision_mode = "Single"
