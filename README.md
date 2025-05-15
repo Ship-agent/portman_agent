@@ -553,13 +553,5 @@ graph LR;
 
 ---
 
-## Contributors
-- Timo Lehtonen (Siili Solutions Oyj)
-- Tommi Herranen (Siili Solutions Oyj)
-- Ivo Kinnunen (Siili Solutions Oyj) 
-- [insert name here] (TAMK)
-- [insert name here] (TAMK)
-- [insert name here] (TAMK)
-- [insert name here] (TAMK)
-
----
+## Acknowledgement
+This work was done in the ELFMo (elfmo.eu) project of ITEA4 as a part of Eureka, and funded by Business Finland.
