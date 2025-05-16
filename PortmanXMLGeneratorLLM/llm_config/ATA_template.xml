@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns:mai="urn:un:unece:uncefact:data:standard:MAI:MMTPlus"
+    xmlns:ata="urn:un:unece:uncefact:data:standard:ATA:MMTPlus"
+    xmlns:qdt="urn:un:unece:uncefact:data:Standard:QualifiedDataType:30"
+    xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:30"
+    xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
+  <mai:MAI>
+    <mai:ExchangedDocument>
+      <ram:ID>MSGID1617779134129</ram:ID>
+      <ram:TypeCode>ATA</ram:TypeCode>
+      <ram:PurposeCode>9</ram:PurposeCode>
+      <ram:VersionID>1.0</ram:VersionID>
+      <ram:FirstSignatoryDocumentAuthentication>
+        <ram:ActualDateTime>
+          <udt:DateTimeString>2024-09-06T09:30:00Z</udt:DateTimeString>
+        </ram:ActualDateTime>
+      </ram:FirstSignatoryDocumentAuthentication>
+    </mai:ExchangedDocument>
+    <mai:ExchangedDeclaration>
+      <ram:ID>DECL-PT-24-00001</ram:ID>
+      <ram:DeclarantTradeParty>
+        <ram:ID>IT123456789012345</ram:ID>
+        <ram:Name>Blue waves shipping Ltd.</ram:Name>
+        <ram:RoleCode>AG</ram:RoleCode>
+        <ram:DefinedTradeContact>
+          <ram:PersonName>Mario Rossi</ram:PersonName>
+          <ram:TelephoneUniversalCommunication>
+            <ram:CompleteNumber>0039 918273645</ram:CompleteNumber>
+          </ram:TelephoneUniversalCommunication>
+          <ram:EmailURIUniversalCommunication>
+            <ram:URIID>mario.rossi@bws.it</ram:URIID>
+          </ram:EmailURIUniversalCommunication>
+        </ram:DefinedTradeContact>
+        <ram:PostalTradeAddress>
+          <ram:PostcodeCode>00144</ram:PostcodeCode>
+          <ram:StreetName>Via Giulio Cesare</ram:StreetName>
+          <ram:CityName>Rome</ram:CityName>
+          <ram:CountryID>IT</ram:CountryID>
+          <ram:BuildingNumber>10B</ram:BuildingNumber>
+        </ram:PostalTradeAddress>
+        <ram:TelephoneUniversalCommunication>
+          <ram:CompleteNumber>0039 918273644</ram:CompleteNumber>
+        </ram:TelephoneUniversalCommunication>
+        <ram:EmailURIUniversalCommunication>
+          <ram:URIID>info@bws.it</ram:URIID>
+        </ram:EmailURIUniversalCommunication>
+      </ram:DeclarantTradeParty>
+    </mai:ExchangedDeclaration>
+    <mai:SpecifiedLogisticsTransportMovement>
+      <ram:CallTransportEvent>
+        <ram:ID>PT20240508-001</ram:ID>
+      </ram:CallTransportEvent>
+    </mai:SpecifiedLogisticsTransportMovement>
+  </mai:MAI>
+  <ata:ATA>
+    <ata:ExchangedDocument>
+      <ram:Remarks>Example free text remark.</ram:Remarks>
+    </ata:ExchangedDocument>
+    <ata:SpecifiedLogisticsTransportMovement>
+      <ram:ArrivalTransportEvent>
+        <ram:ActualArrivalRelatedDateTime>
+          <qdt:DateTimeString>2024-05-25T13:25:00Z</qdt:DateTimeString>
+        </ram:ActualArrivalRelatedDateTime>
+        <ram:OccurrenceLogisticsLocation>
+          <ram:ID>Terminal B3</ram:ID>
+        </ram:OccurrenceLogisticsLocation>
+      </ram:ArrivalTransportEvent>
+      <ram:CallTransportEvent>
+        <ram:ActualArrivalRelatedDateTime>
+          <qdt:DateTimeString>2024-05-25T13:25:00Z</qdt:DateTimeString>
+        </ram:ActualArrivalRelatedDateTime>
+        <ram:MaritimeAnchorageIndicator>0</ram:MaritimeAnchorageIndicator>
+      </ram:CallTransportEvent>
+    </ata:SpecifiedLogisticsTransportMovement>
+  </ata:ATA>
+</Envelope>

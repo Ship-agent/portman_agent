@@ -1,0 +1,24 @@
+cot: "Analyze this step by step: ${input}"
+zero_shot: "Answer directly: ${input}"
+few_shot: |
+  Answer the question based on the examples provided.
+  Example 1: ${example1}
+  Example 2: ${example2}
+  Now answer: ${input}
+
+convert_json_to_xml: |
+  You are given an example XML format below:
+
+  Example XML:
+  ${example_xml} how to template better? 
+
+  Now, using the above example as the format, convert the following JSON data into XML:
+
+  JSON Input:
+  ${json_input}
+
+  Follow the structure of the example exactly. 
+  Do not skip any fields unless necessary. 
+  Properly format and nest all elements as shown in the example and only return xml content as response.
+  Do not include any additional text or explanations.
+  Ensure that the XML is well-formed and valid.
