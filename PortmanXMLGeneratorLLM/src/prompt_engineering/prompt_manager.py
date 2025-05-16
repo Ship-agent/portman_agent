@@ -54,4 +54,27 @@ class PromptManager:
         # Will add more methods here
 
         return self.templates[method].format(input=user_input)
+    
+    def get_prompt_chain(self, method="cot", llm="hf"):
+        """Return a LangChain LLMChain using the specified prompt template and LLM."""
+        if method not in self.templates:
+            raise KeyError(f"No prompt template found for method '{method}'")
+
+        prompt_template = PromptTemplate(
+           input = ["json_input", "example_xml"], 
+            template=self.templates[method]
+        )
+
+        selected_llm = self.openai_llm if llm == "openai" else self.hf_llm
+        return LLMChain(prompt=prompt_template, llm=selected_llm)
+
+    def run_prompt(self, method="cot", llm="openai", user_input=None):
+        """Run a prompt through the specified LLM using a method key from templates."""
+        chain = self.get_prompt_chain(method=method, llm=llm)
+        response = chain.invoke({"example_xml": self.example_xml, "json_input": user_input})
+
+        print("response", response["text"])
+        
+        return response["text"]
+
 

@@ -10,7 +10,7 @@ convert_json_to_xml: |
   You are given an example XML format below:
 
   Example XML:
-  ${example_xml} how to template better? 
+  ${example_xml} 
 
   Now, using the above example as the format, convert the following JSON data into XML:
 
