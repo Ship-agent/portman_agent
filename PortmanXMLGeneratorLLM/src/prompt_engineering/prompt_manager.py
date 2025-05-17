@@ -50,7 +50,7 @@ class PromptManager:
         if method not in self.templates:
             raise KeyError(f"Template method '{method}' not found.")
         if method == "convert_json_to_xml":
-            return self.templates[method].format(json_input=user_input, example_xml = self.example_xml )
+            return self.templates[method].format(user_input=user_input, example_xml = self.example_xml )
         # Will add more methods here
 
         return self.templates[method].format(input=user_input)
@@ -61,7 +61,7 @@ class PromptManager:
             raise KeyError(f"No prompt template found for method '{method}'")
 
         prompt_template = PromptTemplate(
-           input = ["json_input", "example_xml"], 
+           input = ["user_input", "example_xml"], 
             template=self.templates[method]
         )
 
@@ -71,7 +71,7 @@ class PromptManager:
     def run_prompt(self, method="cot", llm="openai", user_input=None):
         """Run a prompt through the specified LLM using a method key from templates."""
         chain = self.get_prompt_chain(method=method, llm=llm)
-        response = chain.invoke({"example_xml": self.example_xml, "json_input": user_input})
+        response = chain.invoke({"example_xml": self.example_xml, "user_input": user_input})
 
         print("response", response["text"])
         
