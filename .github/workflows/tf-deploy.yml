@@ -3,10 +3,10 @@ name: Terraform Deployment
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
+      - main
   workflow_dispatch:  # Allows manual execution
     inputs:
       environment:
@@ -18,7 +18,6 @@ on:
           - development
           - testing
           - production
-          - tamk
 
 permissions:
   id-token: write
@@ -132,14 +131,14 @@ jobs:
           echo '```' >> $GITHUB_OUTPUT
           echo "</details>" >> $GITHUB_OUTPUT
           echo "${delimiter}" >> $GITHUB_OUTPUT
-          
+
       # Publish Terraform Plan as task summary
       - name: Publish Terraform Plan to Task Summary
         env:
           SUMMARY: ${{ steps.tf-plan-string.outputs.summary }}
         run: |
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
-        
+
       # If this is a PR post the changes (TODO: Fixme, this did not work because of missing permissions)
       #- name: Push Terraform Output to PR
       #  if: github.ref != 'refs/heads/main'

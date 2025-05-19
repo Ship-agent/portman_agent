@@ -9,7 +9,7 @@ def generate_blob_storage_link(blob_name, connection_string=None):
         # Get storage account connection string if not provided
         if not connection_string:
             connection_string = os.environ.get("AzureWebJobsStorage")
-        
+
         if not connection_string:
             logging.warning("Storage connection string not available, cannot generate direct link")
             return ""
@@ -26,14 +26,14 @@ def generate_blob_storage_link(blob_name, connection_string=None):
         # Get account key (needed for SAS token generation)
         account_key = connection_string.split('AccountKey=')[1].split(';')[0]
 
-        # Generate SAS token with read permission that expires in 7 days
+        # Generate SAS token with read permission that expires in 90 days
         sas_token = generate_blob_sas(
             account_name=account_name,
             container_name=container_name,
             blob_name=blob_path,
             account_key=account_key,
             permission=BlobSasPermissions(read=True),
-            expiry=datetime.now(UTC) + timedelta(days=7),
+            expiry=datetime.now(UTC) + timedelta(days=90),
             content_type="application/xml",
             content_disposition=f"attachment; filename={os.path.basename(blob_path)}"
         )

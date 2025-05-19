@@ -12,7 +12,6 @@ on:
           - development
           - testing
           - production
-          - tamk
 
 permissions:
   id-token: write

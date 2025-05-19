@@ -1,8 +1,0 @@
-variable "naming_prefix" {}
-variable "location" {}
-variable "resource_group_owner_tag_value" {}
-variable "allowed_ip_start" {}
-variable "allowed_ip_end" {}
-variable "allowed_ip_local" {}
-variable "admin_password" {}
-variable "storage_account_name" {}

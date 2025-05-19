@@ -12,6 +12,16 @@ resource "azurerm_storage_account" "storage" {
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+
+  blob_properties {
+    cors_rule {
+      allowed_headers    = ["*"]
+      allowed_methods    = ["GET", "HEAD", "OPTIONS"]
+      allowed_origins    = var.allowed_origins
+      exposed_headers    = ["*"]
+      max_age_in_seconds = 86400
+    }
+  }
 }
 
 resource "azurerm_linux_function_app" "function_app" {
