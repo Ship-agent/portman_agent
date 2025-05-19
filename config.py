@@ -19,3 +19,12 @@ XML_CONVERTER_CONFIG = {
     "function_url": os.getenv("XML_CONVERTER_FUNCTION_URL", "http://localhost:7071/api/emswe-xml-converter"),
     "function_key": os.getenv("XML_CONVERTER_FUNCTION_KEY", "")
 }
+
+CONFIDENTIAL_MIND_CONFIG = {
+    "function_url": os.getenv("CONFIDENTIAL_MIND_BASE_URL", ""),
+    "function_key": os.getenv("CONFIDENTIAL_MIND_API_KEY", "")
+}
+
+HUGGING_FACE_CONFIG = {
+    "function_key": os.getenv("HUGGING_FACE_API_KEY", "")
+}
