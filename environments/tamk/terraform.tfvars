@@ -1,7 +1,0 @@
-location                       = "Sweden Central"
-naming_prefix                  = "tamk-portman-dev"
-storage_account_name           = "tamkportmandevsa"
-allowed_ip_start               = "88.148.163.0"
-allowed_ip_end                 = "88.148.163.255"
-allowed_ip_local               = "85.76.118.58"
-resource_group_owner_tag_value = "pp.pp@portman.pp"

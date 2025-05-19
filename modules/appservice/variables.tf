@@ -34,6 +34,13 @@ variable "admin_username" {
 }
 
 variable "admin_password" {
-  description = "PostgreSQL Admin Password"
+  description = "The administrator password for the PostgreSQL server."
   type        = string
+  sensitive   = true
+}
+
+variable "allowed_origins" {
+  description = "List of origins allowed to make CORS requests to the storage account blob service."
+  type        = list(string)
+  default     = ["*"]
 }

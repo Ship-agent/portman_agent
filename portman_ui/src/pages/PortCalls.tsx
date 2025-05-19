@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
   Box,
@@ -19,16 +19,28 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  Skeleton,
+  Tabs,
+  Tab,
+  Divider,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   FilterAlt as FilterIcon,
   Search as SearchIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  DirectionsBoat as VesselIcon,
+  LocationOn as PortIcon,
+  AccessTime as TimeIcon,
+  People as PeopleIcon,
+  Business as CompanyIcon,
 } from '@mui/icons-material';
 import { PortCall } from '../types';
 import api from "../services/api";
+import XmlViewDialog from '../components/common/XmlViewDialog';
 
 const PortCalls: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -42,108 +54,111 @@ const PortCalls: React.FC = () => {
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [loadingAllData, setLoadingAllData] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Set default date range to one week (7 days ago to today)
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const today = new Date();
-  
+
   const [startDate, setStartDate] = useState<Date | null>(oneWeekAgo);
   const [endDate, setEndDate] = useState<Date | null>(today);
 
-  // Initial data load
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+  // State for the XML View Dialog
+  const [isXmlDialogOpen, setIsXmlDialogOpen] = useState(false);
+  const [selectedXmlUrl, setSelectedXmlUrl] = useState<string | null>(null);
+  const [selectedXmlType, setSelectedXmlType] = useState<string | null>(null);
 
-      try {
-        const response = await api.getPortCallsPaginated();
-        const data = response?.data?.value || [];
-        setPortCalls(data);
-        setTotalPortCalls(data.length);
-
-        // Store the next page URL if available
-        if (response?.data?.nextLink) {
-          setNextPageUrl(response.data.nextLink);
-          // Automatically start loading all data
-          loadAllData(response.data.nextLink, data);
-        }
-      } catch (err) {
-        console.error('Error fetching port calls:', err);
-        setError('Failed to load port calls. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Function to load all data recursively
-  const loadAllData = async (url: string, currentData: PortCall[]) => {
-    if (!url) return;
-
-    setLoadingAllData(true);
-    setLoadingMore(true);
+  const fetchData = useCallback(async (currentData: PortCall[] = [], url?: string) => {
+    if (!url && currentData.length === 0) setLoading(true);
+    if (url) setLoadingMore(true);
+    setError(null);
 
     try {
-      const urlObj = new URL(url);
-      const params = new URLSearchParams(urlObj.search);
-      const afterParam = params.get('$after');
+      const response = await api.getPortCallsPaginated({
+        afterParam: url ? new URL(url).searchParams.get('$after') || undefined : undefined,
+        startDate: startDate,
+        endDate: endDate
+      });
 
-      if (afterParam) {
-        // Pass the afterParam along with date filters
-        const response = await api.getPortCallsPaginated({
-          afterParam: afterParam,
-          startDate: startDate,
-          endDate: endDate
-        });
-        
-        const newData = response?.data?.value || [];
+      const newData = response?.data?.value || [];
+      const combinedData = url ? [...currentData, ...newData] : newData;
+      setPortCalls(combinedData);
+      setTotalPortCalls(combinedData.length); // This might need adjustment if backend provides total count
 
-        const combinedData = [...currentData, ...newData];
-        setPortCalls(combinedData);
-        setTotalPortCalls(combinedData.length);
-
-        // If there's more data, continue loading
-        if (response?.data?.nextLink) {
-          // Short delay to prevent overloading the server
+      if (response?.data?.nextLink) {
+        setNextPageUrl(response.data.nextLink);
+        // Continue loading all data if it's the initial load or if specifically triggered
+        if (!url) { // Initial load implies we want all data
           setTimeout(() => {
-            loadAllData(response.data.nextLink, combinedData);
+            fetchData(combinedData, response.data.nextLink);
           }, 300);
-        } else {
-          setNextPageUrl(null);
-          setLoadingAllData(false);
-          setLoadingMore(false);
         }
+      } else {
+        setNextPageUrl(null);
+        setLoadingAllData(false);
       }
     } catch (err) {
-      console.error('Error loading more port calls:', err);
-      setError('Failed to load all port calls. Some data might be missing.');
-      setLoadingAllData(false);
-      setLoadingMore(false);
+      console.error('Error fetching port calls:', err);
+      setError('Failed to load port calls. Please try again later.');
+    } finally {
+      if (!url) setLoading(false);
+      if (url) setLoadingMore(false);
+      if (!nextPageUrl) setLoadingAllData(false);
     }
-  };
+  }, [startDate, endDate, nextPageUrl]); // Added nextPageUrl to dependencies to avoid issues if it changes
+
+  useEffect(() => {
+    setLoadingAllData(true); // Indicate that we are attempting to load all data
+    fetchData(); // Initial data load
+  }, [startDate, endDate]); // Removed fetchData from here, it's called inside
+
 
   const handleClearFilters = () => {
-    // Reset to one week ago (default filter)
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    setStartDate(oneWeekAgo);
-    setEndDate(new Date()); // Today
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - 7);
+    setStartDate(defaultStartDate);
+    setEndDate(new Date());
+    setStatusFilter('all');
     setPage(0);
   };
 
-  // Filter port calls based on search term only (date filtering is now done server-side)
+  const getStatus = (call: PortCall) => {
+    if (call.atd) return { label: 'Completed', color: 'default' as const };
+    if (call.ata) return { label: 'Arrived', color: 'success' as const };
+    const now = new Date();
+    const etaDate = call.eta ? new Date(call.eta) : null;
+    if (!etaDate) return { label: 'Unknown', color: 'default' as const };
+    if (etaDate < new Date(now.getTime() - 3 * 60 * 60 * 1000)) return { label: 'Delayed', color: 'warning' as const };
+    if (etaDate < new Date(now.getTime() + 24 * 60 * 60 * 1000)) return { label: 'Arriving Soon', color: 'info' as const };
+    return { label: 'Expected', color: 'primary' as const };
+  };
+
   const filteredPortCalls = (portCalls || [])
-    .filter((call: PortCall) =>
-      // Text search filter
-      call?.vesselname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      call?.imolloyds?.toString().includes(searchTerm) ||
-      call?.portareaname?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+      .filter((call: PortCall) => {
+        // Apply search filter
+        const matchesSearch =
+            call?.vesselname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            call?.imolloyds?.toString().includes(searchTerm) ||
+            call?.portareaname?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        // Apply status filter
+        if (statusFilter === 'all') return matchesSearch;
+        if (statusFilter === 'arrived' && call.ata) return matchesSearch;
+        if (statusFilter === 'completed' && call.atd) return matchesSearch;
+        if (statusFilter === 'expected' && !call.ata && !call.atd) return matchesSearch;
+        if (statusFilter === 'arriving-soon') {
+          const now = new Date();
+          const etaDate = call.eta ? new Date(call.eta) : null;
+          if (etaDate && etaDate < new Date(now.getTime() + 24 * 60 * 60 * 1000) && !call.ata) return matchesSearch;
+        }
+        if (statusFilter === 'delayed') {
+          const now = new Date();
+          const etaDate = call.eta ? new Date(call.eta) : null;
+          if (etaDate && etaDate < new Date(now.getTime() - 3 * 60 * 60 * 1000) && !call.ata) return matchesSearch;
+        }
+        return false;
+      })
+      .sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -157,105 +172,55 @@ const PortCalls: React.FC = () => {
   const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    
-    // Format as dd.mm.yyyy - hh.mm.ss
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
-    
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
-    
     return `${day}.${month}.${year} - ${hours}.${minutes}.${seconds}`;
   };
 
-  const handleViewXML = (url: string) => {
-    window.open(url, '_blank');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'success';
-      case 'SCHEDULED':
-        return 'primary';
-      case 'COMPLETED':
-        return 'default';
-      default:
-        return 'default';
-    }
-  };
-
-  // Helper function to determine the status label and color
-  const getStatus = (call: PortCall) => {
-    if (call.atd) {
-      return { label: 'Completed', color: 'default' as const };
-    }
-    if (call.ata) {
-      return { label: 'Arrived', color: 'success' as const };
-    }
-
-    const now = new Date();
-    const etaDate = call.eta ? new Date(call.eta) : null;
-
-    if (!etaDate) {
-      return { label: 'Unknown', color: 'default' as const };
-    }
-
-    // If ETA is in the past by more than 3 hours and no ATA
-    if (etaDate < new Date(now.getTime() - 3 * 60 * 60 * 1000)) {
-      return { label: 'Delayed', color: 'warning' as const };
-    }
-
-    // If ETA is within the next 24 hours
-    if (etaDate < new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
-      return { label: 'Arriving Soon', color: 'info' as const };
-    }
-
-    return { label: 'Expected', color: 'primary' as const };
+  // Updated function to open the dialog
+  const handleOpenXmlDialog = (url: string, type: string) => {
+    setSelectedXmlUrl(url);
+    setSelectedXmlType(type);
+    setIsXmlDialogOpen(true);
   };
 
   interface GridItemProps {
     title: string;
     value: any;
+    icon?: React.ReactNode;
   }
 
-  const GridItem: React.FC<GridItemProps> = ({ title, value }) => {
-    return (
-        <Grid2 component="div" sx={{ width: '250px' }}>
-          <Box sx={{
-            padding: "8px 4px 8px 8px",
-            height: "100%",
-            borderLeft: '1px solid rgba(25, 118, 210, 0.2)',
-            '&:first-of-type': {
-              borderLeft: 'none'
-            }
-          }}>
-            <Typography variant="body1" sx={{
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              color: 'text.secondary',
-              textDecoration: "underline",
-              textDecorationColor: 'rgba(0, 0, 0, 0.2)',
-              textDecorationStyle: 'dotted',
-              marginBottom: '2px'
-            }}>
-              {title}
-            </Typography>
-            <Typography variant="body2" sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              color: 'text.primary',
-              fontWeight: value ? 'normal' : 'light'
-            }}>
-              {value || 'N/A'}
-            </Typography>
-          </Box>
-        </Grid2>
-    );
-  }
-
+  const GridItem: React.FC<GridItemProps> = ({ title, value, icon }) => (
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        borderBottom: '1px dotted rgba(0, 0, 0, 0.1)',
+        py: 0.25
+      }}>
+        <Typography variant="body2" sx={{
+          fontSize: '0.7rem',
+          fontWeight: 500,
+          color: 'text.secondary',
+          width: '35%'
+        }}>
+          {title}:
+        </Typography>
+        <Typography variant="body2" sx={{
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          color: 'text.primary',
+          fontWeight: value ? 'normal' : 'light',
+          fontSize: '0.7rem',
+          width: '65%'
+        }}>
+          {value || 'N/A'}
+        </Typography>
+      </Box>
+  );
 
   interface RowProps {
     call: PortCall;
@@ -263,6 +228,7 @@ const PortCalls: React.FC = () => {
 
   const Row: React.FC<RowProps> = ({ call }) => {
     const [open, setOpen] = useState(false);
+    const status = getStatus(call);
 
     return (
         <React.Fragment>
@@ -273,6 +239,14 @@ const PortCalls: React.FC = () => {
               sx={{
                 '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.03)' },
                 transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                  cursor: 'pointer',
+                  '.expand-icon': {
+                    opacity: 1,
+                    transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }
+                },
                 '&:hover .action-buttons': { opacity: 1 }
               }}
               data-cy={`portcall-row-${call?.portcallid}`}
@@ -280,21 +254,94 @@ const PortCalls: React.FC = () => {
             <TableCell>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }} data-cy="vessel-name">
+                  <Typography variant="body1" sx={{
+                    fontWeight: 500,
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }} data-cy="vessel-name">
                     {call?.vesselname || 'N/A'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" data-cy="vessel-imo">
+                  <Typography variant="body2" color="text.secondary" data-cy="vessel-imo" sx={{
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }}>
                     IMO: {call?.imolloyds || 'N/A'}
                   </Typography>
                 </Box>
-                {call?.vid_xml_url && (
-                    <Tooltip title="View VID XML">
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {call?.vid_xml_url && (
+                      <Tooltip title="Preview VID XML">
+                        <IconButton
+                            color="warning"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenXmlDialog(call.vid_xml_url!, 'VID');
+                            }}
+                            sx={{
+                              padding: { xs: '4px', sm: '8px' }
+                            }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                  )}
+                  <Tooltip title={open ? "Collapse" : "Expand"}>
+                    <IconButton
+                        size="small"
+                        className="expand-icon"
+                        sx={{
+                          opacity: 0.5,
+                          transition: 'all 0.2s ease-in-out',
+                          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                          padding: { xs: '4px', sm: '8px' }
+                        }}
+                    >
+                      <ExpandMoreIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+            </TableCell>
+            <TableCell>
+              <Chip
+                  label={status.label}
+                  color={status.color}
+                  size="small"
+                  data-cy="status-chip"
+                  sx={{
+                    fontWeight: 'medium',
+                    minWidth: { xs: 70, sm: 85 },
+                    '& .MuiChip-label': {
+                      px: { xs: 0.5, sm: 1 },
+                      fontSize: { xs: '0.7rem', sm: '0.8125rem' }
+                    }
+                  }}
+              />
+            </TableCell>
+            <TableCell>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="body1" data-cy="port-to-visit" sx={{
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
+                  {call?.porttovisit || 'N/A'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" data-cy="port-area" sx={{
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}>
+                  {call?.portareaname || 'N/A'}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="eta-value">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography>{formatDateTime(call?.eta)}</Typography>
+                {call?.noa_xml_url && (
+                    <Tooltip title="Preview NOA XML">
                       <IconButton
-                          color="warning"
+                          color="primary"
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleViewXML(call.vid_xml_url!);
+                            handleOpenXmlDialog(call.noa_xml_url!, 'NOA');
                           }}
                       >
                         <VisibilityIcon fontSize="small" />
@@ -303,84 +350,37 @@ const PortCalls: React.FC = () => {
                 )}
               </Box>
             </TableCell>
-
-            <TableCell>
-              <Chip
-                  label={getStatus(call).label}
-                  color={getStatus(call).color}
-                  size="small"
-                  data-cy="status-chip"
-                  sx={{
-                    fontWeight: 'medium',
-                    minWidth: 85,
-                    '& .MuiChip-label': { px: 1 }
-                  }}
-              />
-            </TableCell>
-
-            <TableCell>
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="body1" data-cy="port-to-visit">
-                  {call?.porttovisit || 'N/A'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" data-cy="port-area">
-                  {call?.portareaname || 'N/A'}
-                </Typography>
-              </Box>
-            </TableCell>
-
-            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="eta-value">
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography>{formatDateTime(call?.eta)}</Typography>
-                {call?.noa_xml_url && (
-                  <Tooltip title="View NOA XML">
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewXML(call.noa_xml_url!);
-                      }}
-                    >
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-            </TableCell>
-
             <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="ata-value">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography>{call?.ata ? formatDateTime(call.ata) : '-'}</Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  {call?.ata_xml_url && (
-                      <Tooltip title="View ATA XML">
-                        <IconButton
-                            color="success"
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewXML(call.ata_xml_url!);
-                            }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                  )}
-                </Box>
+                {call?.ata_xml_url && (
+                    <Tooltip title="Preview ATA XML">
+                      <IconButton
+                          color="success"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenXmlDialog(call.ata_xml_url!, 'ATA');
+                          }}
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                )}
               </Box>
             </TableCell>
-
             <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} data-cy="etd-value">
               <Typography>{formatDateTime(call?.etd)}</Typography>
             </TableCell>
           </TableRow>
-
-          <TableRow sx={{ backgroundColor: open ? "rgba(25, 118, 210, 0.04)" : "#eeeeee" }}>
+          <TableRow sx={{
+            backgroundColor: open ? "rgba(25, 118, 210, 0.04)" : "#eeeeee",
+            '& > td': { borderBottom: open ? '1px solid rgba(224, 224, 224, 1)' : 'none' }
+          }}>
             <TableCell style={{ padding: 0 }} colSpan={8}>
               <Collapse in={open} timeout="auto" unmountOnExit>
                 <Box sx={{
-                  padding: '12px 12px 12px 12px',
+                  padding: { xs: '4px 6px', sm: '6px 8px' },
                   display: 'flex',
                   flexDirection: 'column',
                   borderTop: '1px dashed #cccccc',
@@ -388,169 +388,453 @@ const PortCalls: React.FC = () => {
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)',
                   borderRadius: '0 0 4px 4px'
                 }}>
-                  <Grid2 container component="div" spacing={1} sx={{
+                  {/* Mobile-specific time info visible only on small screens */}
+                  <Box sx={{
+                    display: { xs: 'flex', md: 'none' },
                     width: '100%',
-                    margin: 0,
-                    '& > .MuiGrid2-root': {
-                      padding: 0
-                    }
+                    flexDirection: 'column',
+                    gap: 0.5,
+                    mb: 1,
+                    p: 1,
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
                   }}>
-                    <GridItem title="Port Call ID" value={call.portcallid} />
-                    <GridItem title="Vessel Type" value={call.vesseltypecode} />
-                    <GridItem title="Port to Visit" value={call.porttovisit} />
-                    <GridItem title="Port Area" value={call.portareaname} />
-                    <GridItem title="Berth Code" value={call.berthcode} />
-                    <GridItem title="Previous Port" value={call.prevport} />
-                    <GridItem title="Next Port" value={call.nextport} />
-                    <GridItem title="ATD" value={formatDateTime(call.atd)} />
-                    <GridItem title="Crew on Arrival" value={call.crewonarrival} />
-                    <GridItem title="Crew on Departure" value={call.crewondeparture} />
-                    <GridItem title="Passengers on Arrival" value={call.passengersonarrival} />
-                    <GridItem title="Passengers on Departure" value={call.passengersondeparture} />
-                    <GridItem title="Agent Name" value={call.agentname} />
-                    <GridItem title="Shipping Company" value={call.shippingcompany} />
-                    <GridItem title="Created" value={formatDateTime(call.created)} />
-                    <GridItem title="Modified" value={formatDateTime(call.modified)} />
-                  </Grid2>
+                    <Typography variant="caption" sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: '0.75rem',
+                      color: 'primary.main',
+                      fontWeight: 'bold',
+                      pb: 0.5
+                    }}>
+                      <TimeIcon sx={{ fontSize: '0.9rem' }} /> Time Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                      <Box sx={{ minWidth: '50%', pr: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>ETA:</Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {formatDateTime(call?.eta)}
+                          {call?.noa_xml_url && (
+                              <IconButton
+                                  color="primary"
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenXmlDialog(call.noa_xml_url!, 'NOA');
+                                  }}
+                                  sx={{ p: 0.25, ml: 0.5 }}
+                              >
+                                <VisibilityIcon sx={{ fontSize: '0.75rem' }} />
+                              </IconButton>
+                          )}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ minWidth: '50%', pr: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>ATA:</Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {call?.ata ? formatDateTime(call.ata) : '-'}
+                          {call?.ata_xml_url && (
+                              <IconButton
+                                  color="success"
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenXmlDialog(call.ata_xml_url!, 'ATA');
+                                  }}
+                                  sx={{ p: 0.25, ml: 0.5 }}
+                              >
+                                <VisibilityIcon sx={{ fontSize: '0.75rem' }} />
+                              </IconButton>
+                          )}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ minWidth: '50%', pr: 1, mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>ETD:</Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {formatDateTime(call?.etd)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ minWidth: '50%', pr: 1, mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>ATD:</Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {formatDateTime(call?.atd)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                  <Box sx={{
+                    display: 'flex',
+                    width: '100%',
+                    flexWrap: { xs: 'wrap', md: 'nowrap' },
+                  }}>
+                    <Box sx={{
+                      width: { xs: '100%', sm: '50%', md: '25%' },
+                      px: 1,
+                      borderRight: { md: '1px solid rgba(0, 0, 0, 0.1)' },
+                      mb: { xs: 1, md: 0 }
+                    }}>
+                      <Typography variant="caption" sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: '0.75rem',
+                        color: 'primary.main',
+                        mb: 0.5,
+                        fontWeight: 'bold',
+                        borderBottom: '1px solid rgba(25, 118, 210, 0.2)',
+                        pb: 0.5
+                      }}>
+                        <VesselIcon sx={{ fontSize: '0.9rem' }} /> Vessel
+                      </Typography>
+                      <GridItem title="Name" value={call.vesselname} />
+                      <GridItem title="IMO" value={call.imolloyds} />
+                      <GridItem title="Type" value={call.vesseltypecode} />
+                      <GridItem title="Port Call ID" value={call.portcallid} />
+                    </Box>
+
+                    <Box sx={{
+                      width: { xs: '100%', sm: '50%', md: '25%' },
+                      px: 1,
+                      borderRight: { md: '1px solid rgba(0, 0, 0, 0.1)' },
+                      mb: { xs: 1, md: 0 }
+                    }}>
+                      <Typography variant="caption" sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: '0.75rem',
+                        color: 'primary.main',
+                        mb: 0.5,
+                        fontWeight: 'bold',
+                        borderBottom: '1px solid rgba(25, 118, 210, 0.2)',
+                        pb: 0.5
+                      }}>
+                        <PortIcon sx={{ fontSize: '0.9rem' }} /> Port
+                      </Typography>
+                      <GridItem title="To Visit" value={call.porttovisit} />
+                      <GridItem title="Area" value={call.portareaname} />
+                      <GridItem title="Berth" value={call.berthcode} />
+                      <GridItem title="Next Port" value={call.nextport} />
+                    </Box>
+
+                    <Box sx={{
+                      width: { xs: '100%', sm: '50%', md: '25%' },
+                      px: 1,
+                      borderRight: { md: '1px solid rgba(0, 0, 0, 0.1)' },
+                      mb: { xs: 1, md: 0 },
+                      display: { xs: 'none', md: 'block' } // Hide on mobile as we show a summary above
+                    }}>
+                      <Typography variant="caption" sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: '0.75rem',
+                        color: 'primary.main',
+                        mb: 0.5,
+                        fontWeight: 'bold',
+                        borderBottom: '1px solid rgba(25, 118, 210, 0.2)',
+                        pb: 0.5
+                      }}>
+                        <TimeIcon sx={{ fontSize: '0.9rem' }} /> Times
+                      </Typography>
+                      <GridItem title="ETA" value={formatDateTime(call.eta)} />
+                      <GridItem title="ATA" value={formatDateTime(call.ata)} />
+                      <GridItem title="ETD" value={formatDateTime(call.etd)} />
+                      <GridItem title="ATD" value={formatDateTime(call.atd)} />
+                    </Box>
+
+                    <Box sx={{
+                      width: { xs: '100%', sm: '50%', md: '25%' },
+                      px: 1,
+                      mb: { xs: 1, md: 0 }
+                    }}>
+                      <Typography variant="caption" sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: '0.75rem',
+                        color: 'primary.main',
+                        mb: 0.5,
+                        fontWeight: 'bold',
+                        borderBottom: '1px solid rgba(25, 118, 210, 0.2)',
+                        pb: 0.5
+                      }}>
+                        <CompanyIcon sx={{ fontSize: '0.9rem' }} /> Company
+                      </Typography>
+                      <GridItem title="Agent" value={call.agentname} />
+                      <GridItem title="Shipping Co." value={call.shippingcompany} />
+                      <GridItem title="Created" value={formatDateTime(call.created)} />
+                      <GridItem title="Prev. Port" value={call.prevport} />
+                    </Box>
+                  </Box>
                 </Box>
               </Collapse>
             </TableCell>
           </TableRow>
         </React.Fragment>
     );
-  }
+  };
 
-  // Fetch port calls when date range changes
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Send date filter parameters to the API
-        const response = await api.getPortCallsPaginated({
-          startDate: startDate,
-          endDate: endDate
-        });
-        
-        const data = response?.data?.value || [];
-        setPortCalls(data);
-        setTotalPortCalls(data.length);
-
-        // Store the next page URL if available
-        if (response?.data?.nextLink) {
-          setNextPageUrl(response.data.nextLink);
-          // Automatically start loading all data with the same date filters
-          loadAllData(response.data.nextLink, data);
-        }
-      } catch (err) {
-        console.error('Error fetching port calls:', err);
-        setError('Failed to load port calls. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [startDate, endDate]); // Re-fetch when date filters change
+  // Loading skeleton for table rows
+  const TableSkeleton = () => (
+      <>
+        {[...Array(5)].map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Skeleton variant="text" width="80%" height={20} />
+                <Skeleton variant="text" width="40%" height={20} />
+              </TableCell>
+              <TableCell>
+                <Skeleton variant="rounded" width={80} height={24} />
+              </TableCell>
+              <TableCell>
+                <Skeleton variant="text" width="70%" height={20} />
+                <Skeleton variant="text" width="50%" height={20} />
+              </TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                <Skeleton variant="text" width="80%" height={20} />
+              </TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                <Skeleton variant="text" width="80%" height={20} />
+              </TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                <Skeleton variant="text" width="80%" height={20} />
+              </TableCell>
+            </TableRow>
+        ))}
+      </>
+  );
 
   if (loading && portCalls.length === 0) {
     return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <CircularProgress data-cy="portcalls-loading" />
+        <Box sx={{ p: 3 }} data-cy="portcalls-loading-container">
+          <Box sx={{ mb: 3 }}>
+            <Skeleton variant="text" width={200} height={40} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Skeleton variant="text" width="30%" height={30} />
+              <Skeleton variant="text" width="30%" height={30} />
+            </Box>
+          </Box>
+
+          <Skeleton variant="rectangular" width="100%" height={100} sx={{ mb: 3, borderRadius: 1 }} />
+
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: 2, boxShadow: 2, mb: 3 }}>
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table sx={{ tableLayout: 'fixed' }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'primary.main' }}>
+                    <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }}>Vessel</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }}>Port</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }}>ETA</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }}>ATA</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', display: { xs: 'none', md: 'table-cell' } }}>ETD</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableSkeleton />
+                </TableBody>
+              </Table>
+            </Box>
+          </Paper>
         </Box>
     );
   }
 
   return (
-      <Box sx={{ p: 3 }} data-cy="portcalls-container">
-        <Box sx={{ 
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }} data-cy="portcalls-container">
+        <Box sx={{
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           justifyContent: 'space-between',
           alignItems: { xs: 'stretch', md: 'center' },
-          mb: 3,
-          gap: 2
+          mb: { xs: 1.5, md: 3 },
+          gap: { xs: 1, md: 2 }
         }}>
-          <Typography variant="h4" component="h1" data-cy="portcalls-title">
+          <Typography variant="h4" component="h1" data-cy="portcalls-title" sx={{
+            fontSize: { xs: '1.5rem', md: '2.125rem' },
+            mb: { xs: 0.5, md: 0 }
+          }}>
             Port Calls
           </Typography>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: { xs: 'column', sm: 'row' }, 
-            gap: 2,
-            width: { xs: '100%', md: 'auto' } 
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, md: 2 },
+            width: { xs: '100%', md: 'auto' }
           }}>
             <TextField
-              variant="outlined"
-              placeholder="Search vessels..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              size="small"
-              data-cy="portcalls-search"
-              sx={{ flexGrow: 1 }}
+                variant="outlined"
+                placeholder="Search vessels..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                  ),
+                  sx: {
+                    height: { xs: '40px', md: 'auto' }
+                  }
+                }}
+                size="small"
+                data-cy="portcalls-search"
+                sx={{ flexGrow: 1 }}
             />
-            <Button 
-              variant="outlined" 
-              color="primary"
-              startIcon={<FilterIcon />}
-              onClick={() => setShowFilters(!showFilters)}
-              size="small"
+            <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<FilterIcon />}
+                onClick={() => setShowFilters(!showFilters)}
+                size="small"
+                sx={{
+                  height: { xs: '40px', md: 'auto' },
+                  whiteSpace: 'nowrap'
+                }}
             >
               Filters
             </Button>
           </Box>
         </Box>
 
-        <Collapse in={showFilters} sx={{ mb: 3 }}>
-          <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Date Filters</Typography>
+        <Box sx={{ mb: { xs: 1.5, md: 3 }, overflowX: 'auto' }}>
+          <Tabs
+              value={statusFilter}
+              onChange={(_, newValue) => setStatusFilter(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              textColor="primary"
+              indicatorColor="primary"
+              aria-label="status filter tabs"
+              sx={{
+                '.MuiTabs-indicator': {
+                  height: '3px'
+                },
+                '.MuiTab-root': {
+                  minHeight: { xs: '40px', md: '48px' },
+                  py: { xs: 0.5, md: 1 },
+                  px: { xs: 1, md: 2 },
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }
+              }}
+          >
+            <Tab
+                label="All"
+                value="all"
+                icon={<Chip label={portCalls.length} size="small" />}
+                iconPosition="end"
+            />
+            <Tab
+                label="Arrived"
+                value="arrived"
+                icon={<Chip label={portCalls.filter(call => call.ata).length} size="small" color="success" />}
+                iconPosition="end"
+            />
+            <Tab
+                label="Expected"
+                value="expected"
+                icon={<Chip label={portCalls.filter(call => !call.ata && !call.atd).length} size="small" color="primary" />}
+                iconPosition="end"
+            />
+            <Tab
+                label="Arriving Soon"
+                value="arriving-soon"
+                icon={<Chip
+                    label={portCalls.filter(call => {
+                      const now = new Date();
+                      const etaDate = call.eta ? new Date(call.eta) : null;
+                      return etaDate && etaDate < new Date(now.getTime() + 24 * 60 * 60 * 1000) && !call.ata;
+                    }).length}
+                    size="small"
+                    color="info"
+                />}
+                iconPosition="end"
+            />
+            <Tab
+                label="Delayed"
+                value="delayed"
+                icon={<Chip
+                    label={portCalls.filter(call => {
+                      const now = new Date();
+                      const etaDate = call.eta ? new Date(call.eta) : null;
+                      return etaDate && etaDate < new Date(now.getTime() - 3 * 60 * 60 * 1000) && !call.ata;
+                    }).length}
+                    size="small"
+                    color="warning"
+                />}
+                iconPosition="end"
+            />
+            <Tab
+                label="Completed"
+                value="completed"
+                icon={<Chip label={portCalls.filter(call => call.atd).length} size="small" color="default" />}
+                iconPosition="end"
+            />
+          </Tabs>
+        </Box>
+
+        <Collapse in={showFilters} sx={{ mb: { xs: 1.5, md: 3 } }}>
+          <Paper sx={{
+            p: { xs: 1.5, md: 2 },
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            boxShadow: 1
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Date Filters</Typography>
               <IconButton size="small" onClick={handleClearFilters} disabled={!startDate && !endDate}>
                 <CloseIcon fontSize="small" />
               </IconButton>
             </Box>
-            
-            <Grid container spacing={2} alignItems="center">
+            <Grid container spacing={{ xs: 1, md: 2 }} alignItems="center">
               <Grid item xs={12} sm={5}>
                 <TextField
-                  fullWidth
-                  label="Start Date"
-                  type="date"
-                  value={startDate ? startDate.toISOString().split('T')[0] : ''}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const date = e.target.value ? new Date(e.target.value) : null;
-                    setStartDate(date);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
+                    fullWidth
+                    label="Start Date"
+                    type="date"
+                    value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const date = e.target.value ? new Date(e.target.value) : null;
+                      setStartDate(date);
+                      setPage(0);
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        height: { xs: '40px', md: 'auto' }
+                      }
+                    }}
                 />
               </Grid>
               <Grid item xs={12} sm={5}>
                 <TextField
-                  fullWidth
-                  label="End Date"
-                  type="date"
-                  value={endDate ? endDate.toISOString().split('T')[0] : ''}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const date = e.target.value ? new Date(e.target.value) : null;
-                    setEndDate(date);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
+                    fullWidth
+                    label="End Date"
+                    type="date"
+                    value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const date = e.target.value ? new Date(e.target.value) : null;
+                      setEndDate(date);
+                      setPage(0);
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        height: { xs: '40px', md: 'auto' }
+                      }
+                    }}
                 />
               </Grid>
               <Grid item xs={12} sm={2}>
-                <Typography variant="body2" sx={{ textAlign: 'center' }}>
+                <Typography variant="body2" sx={{
+                  textAlign: { xs: 'left', sm: 'center' },
+                  mt: { xs: 0.5, sm: 0 }
+                }}>
                   {filteredPortCalls.length} results
                 </Typography>
               </Grid>
@@ -559,16 +843,21 @@ const PortCalls: React.FC = () => {
         </Collapse>
 
         {error && (
-            <Alert severity="error" sx={{ mb: 3 }} data-cy="portcalls-error">
+            <Alert severity="error" sx={{ mb: { xs: 1.5, md: 3 } }} data-cy="portcalls-error">
               {error}
             </Alert>
         )}
 
-        {/* Statistics Summary */}
-        <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-          <Typography variant="h6" gutterBottom>Summary</Typography>
+        <Box sx={{
+          mb: { xs: 1.5, md: 3 },
+          p: { xs: 1.5, md: 2 },
+          bgcolor: 'background.paper',
+          borderRadius: 2,
+          boxShadow: 1
+        }}>
+          <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.9rem', md: '1.25rem' } }}>Summary</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography>
+            <Typography sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
               Total Port Calls: <strong>{totalPortCalls}</strong>
               {loadingAllData && ' (loading more...)'}
             </Typography>
@@ -581,33 +870,80 @@ const PortCalls: React.FC = () => {
           overflow: 'hidden',
           borderRadius: 2,
           boxShadow: 2,
-          mb: 3
+          mb: { xs: 1.5, md: 3 }
         }} data-cy="portcalls-table-container">
           <Box sx={{ overflowX: 'auto' }}>
-            <Table data-cy="portcalls-table" sx={{ tableLayout: 'fixed' }}>
+            <Table data-cy="portcalls-table" sx={{
+              tableLayout: 'fixed',
+              '& .MuiTableCell-root': {
+                px: { xs: 1, sm: 2 },
+                py: { xs: 1, sm: 1.5 },
+                whiteSpace: { xs: 'normal', md: 'nowrap' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }
+            }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'primary.main' }}>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-vessel">Vessel</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-status">Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white' }} data-cy="table-header-port">Port</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-eta">ETA</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '20%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-ata">ATA</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', width: '15%', color: 'white', display: { xs: 'none', md: 'table-cell' } }} data-cy="table-header-etd">ETD</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: { xs: '40%', sm: '30%', md: '15%' },
+                    color: 'white',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-vessel">Vessel</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: { xs: '25%', sm: '25%', md: '15%' },
+                    color: 'white',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-status">Status</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: { xs: '35%', sm: '45%', md: '15%' },
+                    color: 'white',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-port">Port</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: '20%',
+                    color: 'white',
+                    display: { xs: 'none', md: 'table-cell' },
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-eta">ETA</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: '20%',
+                    color: 'white',
+                    display: { xs: 'none', md: 'table-cell' },
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-ata">ATA</TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    width: '15%',
+                    color: 'white',
+                    display: { xs: 'none', md: 'table-cell' },
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }} data-cy="table-header-etd">ETD</TableCell>
                 </TableRow>
               </TableHead>
-
               <TableBody data-cy="portcalls-table-body">
-                {filteredPortCalls
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((call: PortCall) => (
-                        <Row key={call?.portcallid} call={call} />
-                    ))}
-                {filteredPortCalls.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        No port calls found
-                      </TableCell>
-                    </TableRow>
+                {loading && portCalls.length > 0 ? (
+                    <TableSkeleton />
+                ) : (
+                    <>
+                      {filteredPortCalls
+                          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                          .map((call: PortCall) => (
+                              <Row key={call?.portcallid} call={call} />
+                          ))}
+                      {filteredPortCalls.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                              No port calls found
+                            </TableCell>
+                          </TableRow>
+                      )}
+                    </>
                 )}
               </TableBody>
             </Table>
@@ -627,8 +963,8 @@ const PortCalls: React.FC = () => {
               rowsPerPageOptions={[5, 10, 25, 50, 100, 150, 200, 300, 500]}
               sx={{
                 '.MuiTablePagination-select': {
-                  paddingY: 1,
-                  paddingX: 2,
+                  paddingY: { xs: 0.5, md: 1 },
+                  paddingX: { xs: 1, md: 2 },
                   borderRadius: 1,
                   border: '1px solid #e0e0e0',
                   '&:focus': {
@@ -636,16 +972,30 @@ const PortCalls: React.FC = () => {
                     boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)',
                   }
                 },
-                '.MuiTablePagination-selectIcon': {
-                  color: 'primary.main'
-                },
+                '.MuiTablePagination-selectIcon': { color: 'primary.main' },
                 '.MuiTablePagination-displayedRows': {
-                  fontWeight: 'medium'
+                  fontWeight: 'medium',
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                },
+                '.MuiTablePagination-actions': {
+                  marginLeft: { xs: 0.5, md: 2 }
                 }
               }}
-              labelRowsPerPage="Rows:"
+              labelRowsPerPage={<Typography component="span" sx={{ display: { xs: 'none', sm: 'initial' } }}>Rows:</Typography>}
+              labelDisplayedRows={({ from, to, count }) => (
+                  <Typography component="span" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                    {from}-{to} of {count}
+                  </Typography>
+              )}
           />
         </Paper>
+        {/* Render the XmlViewDialog */}
+        <XmlViewDialog
+            open={isXmlDialogOpen}
+            onClose={() => setIsXmlDialogOpen(false)}
+            xmlUrl={selectedXmlUrl}
+            xmlType={selectedXmlType}
+        />
       </Box>
   );
 };

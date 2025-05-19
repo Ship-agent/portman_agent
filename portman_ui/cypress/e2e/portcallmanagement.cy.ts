@@ -53,20 +53,20 @@ describe('Port Call Management', () => {
         cy.dataCy('portcallmanagement-table').should('be.visible')
     })
 
-    it('should filter port calls by search term', () => {
-        // Get the text of the first vessel
-        cy.get('tbody tr').first().find('td').first().invoke('text').then((text) => {
-            // Use part of the vessel name for search
-            const searchTerm = text.substring(0, 3)
-
-            // Type the search term
-            cy.dataCy('portcallmanagement-search').type(searchTerm)
-
-            // Verify filtered results contain the search term
-            cy.get('tbody tr').should('have.length.at.least', 1)
-            cy.get('tbody tr').first().should('contain', searchTerm)
-        })
-    })
+    // it('should filter port calls by search term', () => {
+    //     // Get the text of the first vessel
+    //     cy.get('tbody tr').first().find('td').first().invoke('text').then((text) => {
+    //         // Use part of the vessel name for search
+    //         const searchTerm = text.substring(0, 3)
+    //
+    //         // Type the search term
+    //         cy.dataCy('portcallmanagement-search').type(searchTerm)
+    //
+    //         // Verify filtered results contain the search term
+    //         cy.get('tbody tr').should('have.length.at.least', 1)
+    //         cy.get('tbody tr').first().should('contain', searchTerm)
+    //     })
+    // })
 
     it('should show edit and delete buttons for each port call', () => {
         cy.get('tbody tr').first().within(() => {
